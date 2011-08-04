@@ -3,17 +3,36 @@
 import FreeCAD, FreeCADGui 
 
 class AddMesh: 
-   def Activated(self): 
+    def Activated(self): 
         FreeCAD.Console.PrintMessage('Hello, World!')
-        mesh = SMesh()
-        layer = mesh.obj.InList[0]
+        FreeCAD.ActiveDocument.openTransaction("Adding Mesh")
+        self.mesh = SMesh()
         sel = FreeCADGui.Selection.getSelection()
         for ob in sel:
-            for p in getattr(ob,"Points"):
-                sp = SMPoint(layer, p)
+            tipe = self.obtype(ob)
+            if tipe == "Wire":
+                self.meshWire(ob)
+            else:
+                FreeCAD.Console.PrintMessage('Cannot mesh object %s(%s)\n'%(ob.Label,tipe))
+        FreeCAD.ActiveDocument.commitTransaction()
 
-   def GetResources(self): 
+
+    def meshWire(self,ob):
+            for p in getattr(ob,"Points",[]):
+                sp = self.mesh.getOrCreatePoint(p,"points")
+
+    @staticmethod
+    def obtype(ob):
+        p = getattr(ob,"Proxy",None)
+        if p:
+            ob = p
+        return getattr(ob,"Type",None)
+
+    def GetResources(self): 
        return {'Pixmap' : '', 'MenuText': 'Add Mesh', 'ToolTip': 'Adds an empty surface mesh'} 
+
+    def IsActive(self):
+        return FreeCAD.ActiveDocument is not None
       
 
 class BaseVP:
@@ -97,31 +116,88 @@ class BaseVP:
 
 class SMLayer:
     """ A layer """
-    def __init__(self,mesh):
+    def __init__(self,mesh,name=None):
+            if name == None:
+                name = self.getDefaultName()
             self.obj = FreeCAD.ActiveDocument.addObject("App::FeaturePython","Layer")
-            #self.obj.addProperty("App::PropertyLinkList","Edges","Base", "Edges")
-            #self.obj.addProperty("App::PropertyLinkList","Points","Base", "Points")
-            #self.obj.addProperty("App::PropertyLinkList","Faces","Base", "Faces")
+            self.obj.addProperty("App::PropertyLinkList","Edges","Base", "Edges")
+            self.obj.addProperty("App::PropertyLinkList","Points","Base", "Points")
+            self.obj.addProperty("App::PropertyLinkList","Faces","Base", "Faces")
             self.obj.addProperty("App::PropertyLink","Mesh","Base", "The mesh this point is in")
             self.obj.Mesh=mesh.obj
-            self.obj.Proxy = self
+            mesh.registerLayer(self.obj)
+            self.obj.Label = name
             self.Type = "SMLayer"
-            SMeshVP(self.obj.ViewObject)
+            SMLayerVP(self.obj.ViewObject)
+            self.obj.Proxy = self
+
+    def registerPoint(self,p):
+        l = self.obj.Points
+        l.append(p)
+        self.obj.Points = l
+
+    @staticmethod
+    def getDefaultName():
+        return "Default Layer"
+
+    def execute(self,fp):
+        pass
 
 class SMLayerVP (BaseVP):
     """ view provider for points"""
     def __init__(self,vobj):
         BaseVP.__init__(self,vobj)
+    def claimChildren(self):
+        return self.Object.Edges + self.Object.Points + self.Object.Faces
 
 class SMesh:
     """ A surface mesh """
     def __init__(self):
             self.obj = FreeCAD.ActiveDocument.addObject("App::FeaturePython","Mesh")
-            #self.obj.addProperty("App::PropertyLinkList","Layers","Base", "Layers")
-            self.obj.Proxy = self
+            self.obj.addProperty("App::PropertyLinkList","Layers","Base", "Layers")
             self.Type = "SMesh"
             SMeshVP(self.obj.ViewObject)
-            SMLayer(self)
+            self.obj.Proxy = self
+
+    def execute(self,fp):
+        pass
+
+    def getOrCreateLayer(self,name=None):
+        """
+            gets an existing layer, or creates it if does not exists
+            arguments:
+                name: name of the layer. optional. If omitted, we are looking for the default one
+        """
+        if name == None:
+            name = SMLayer.getDefaultName()
+        for layer in self.obj.InList:
+            if layer.Proxy.Type == "SMLayer":
+                if layer.Label == name:
+                    return layer
+        l = SMLayer(self,name).obj
+        return l
+        
+    def registerLayer(self,l):
+        layers = self.obj.Layers
+        layers.append(l)
+        self.obj.Layers = layers
+        
+    def getOrCreatePoint(self,vect,layername=None):
+        """
+            gets or creates the point with the given vector
+            arguments:
+                vect: the vector representing the coordinates of the point
+                layername: name of the layer where to put a new point. Optional. If omitted, the default layer is used.
+        """
+        for layer in self.obj.InList:
+            if layer.Proxy.Type == "SMLayer":
+                for point in layer.InList:
+                    if point.Proxy.Type == "SMPoint":
+                        if point.Coordinates == vect:
+                            #FIXME maybe some error should be allowed...
+                            return point
+        return SMPoint(self.getOrCreateLayer(layername),vect).obj
+        
     
 class SMeshVP (BaseVP):
     """ view provider for points"""
@@ -141,9 +217,8 @@ class SMPoint:
             self.obj.addProperty("App::PropertyVector","Coordinates","Base","Coordinates")
             self.obj.addProperty("App::PropertyLinkList","Edges","Base", "Edges using this point")
             self.obj.addProperty("App::PropertyLink","Layer","Base", "The layer this point is in")
-            self.obj.addProperty("App::PropertyLink","Mesh","Base", "The mesh this point is in")
-            self.Layer=layer
-            self.Mesh=layer.Mesh
+            self.obj.Layer=layer
+            layer.Proxy.registerPoint(self.obj)
             if vect is None:
                 vect=FreeCAD.Base.Vector(0,0,0)
             self.obj.Coordinates=vect
@@ -175,32 +250,50 @@ class SMPointVP (BaseVP):
     def __init__(self,vobj):
         BaseVP.__init__(self,vobj)
 
-"""
-class Edge:
-    def __init__(self,data=None,start=None,end=None,crease=0,selected=0):
-            self.obj = FreeCAD.ActiveDocument.addObject("App::FeaturePython","Edge")
-            self.obj.addProperty("App::PropertyLink","StartPoint","Base", "The starting point of the edge")
-            self.obj.addProperty("App::PropertyLink","EndPoint","Base", "The endpoint of the edge")
-            self.obj.addProperty("App::PropertyLink","Layer","Base", "The layer this edge is in")
-            self.obj.addProperty("App::PropertyLink","Mesh","Base", "The mesh this edge is in")
-            self.obj.addProperty("App::PropertyLink","Mesh","Base", "The mesh this edge is in")
+class SMEdge:
+    """
+        An edge is defined by the start and end point.
+        It also have a layer it belongs to
+    """
+    def __init__(self,layer,start,end,crease=None):
+            self.obj = FreeCAD.ActiveDocument.addObject("App::FeaturePython","Point")
+            self.obj.addProperty("App::PropertyVector","Start","Base","Start point")
+            self.obj.addProperty("App::PropertyVector","End","Base","End point")
+            self.obj.addProperty("App::PropertyLink","Layer","Base", "The layer this point is in")
             self.obj.addProperty("App::PropertyEnumeration","Creased","Base","Creased?").Enum=["Creased","Normal"]
-            if data:
-                self.start,self.end,self.crease,self.selected=data.strip().split(' ')
-                self.start=ship.points[int(self.start)]
-                self.end=ship.points[int(self.end)]
-            if start:
-                self.start=start
-            if end:
-                self.end=end
-                self.selected=1
-            self.selected=int(self.selected)
+            self.obj.addProperty("App::PropertyLinkList","Faces","Base", "Faces using this edge")
+            self.obj.Layer=layer
+            self.obj.Start=start
+            self.obj.End=end
+            slef.setcreased(creased)
+            self.obj.Proxy = self
+            self.Type = "SMEdge"
+            SMEdgeVP(self.obj.ViewObject)
+            
+    def fromfef(self,data):
+        #FIXME: the whole fef import stuff should be moved to Mesh
+        start,end,crease,selected=data.strip().split(' ')
+        startp = self.Layer.Mesh.obj.fefpoint(int(start))
+        stopp = self.Layer.Mesh.obj.fefpoint(int(stop))
+        start=ship.points[int(start)]
+        end=ship.points[int(end)]
+        return SMEdge(self.Layer,startp, stopp,crease)
 
     def setcreased(self,creased):
-        if creased:
-            self.obj.Creased = "Creased"
-        else:
+        if (not creased) or (creased == "Normal"):
             self.obj.Creased = "Normal"
-"""
+        else:
+            self.obj.Creased = "Creased"
+
+    def createGeometry(self,obj,prop):
+        for e in self.Faces:
+            e.createGeometry()
+        #fixme own geometry...
+
+class SMEdgeVP (BaseVP):
+    """ view provider for points"""
+    def __init__(self,vobj):
+        BaseVP.__init__(self,vobj)
+
 
 FreeCADGui.addCommand('Add Mesh', AddMesh())

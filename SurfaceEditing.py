@@ -1,6 +1,9 @@
 # coding=UTF-8
 
 import FreeCAD, FreeCADGui 
+from pivy import coin
+import Part
+
 
 class AddMesh: 
     def Activated(self): 
@@ -18,8 +21,17 @@ class AddMesh:
 
 
     def meshWire(self,ob):
-            for p in getattr(ob,"Points",[]):
+            firstp=None
+            lastp=None
+            for p in ob.Points:
                 sp = self.mesh.getOrCreatePoint(p,"points")
+                if firstp is None:
+                    firstp=sp
+                if lastp is not None:
+                    self.mesh.getOrCreateEdge(lastp,sp,"edges")
+                lastp = sp
+            if len(ob.Points) > 2 and ob.Closed:
+                self.mesh.getOrCreateEdge(lastp,firstp,"edges")
 
     @staticmethod
     def obtype(ob):
@@ -136,6 +148,11 @@ class SMLayer:
         l.append(p)
         self.obj.Points = l
 
+    def registerEdge(self,p):
+        l = self.obj.Edges
+        l.append(p)
+        self.obj.Edges = l
+
     @staticmethod
     def getDefaultName():
         return "Default Layer"
@@ -197,6 +214,19 @@ class SMesh:
                             #FIXME maybe some error should be allowed...
                             return point
         return SMPoint(self.getOrCreateLayer(layername),vect).obj
+
+    def getOrCreateEdge(self,p1,p2,layername=None):
+        """
+            gets or creates the point with the given vector
+            arguments:
+                vect: the vector representing the coordinates of the point
+                layername: name of the layer where to put a new point. Optional. If omitted, the default layer is used.
+        """
+        for edge in self.obj.InList:
+            if edge.Proxy.Type == "SMEdge":
+                if edge.Start==p1 and edge.End==p2:
+                    return edge
+        return SMEdge(self.getOrCreateLayer(layername),p1,p2).obj
         
     
 class SMeshVP (BaseVP):
@@ -213,7 +243,7 @@ class SMPoint:
         It keeps a list of references to edges, so when it moved, the edges can be updated
     """
     def __init__(self,layer,vect=None):
-            self.obj = FreeCAD.ActiveDocument.addObject("App::FeaturePython","Point")
+            self.obj = FreeCAD.ActiveDocument.addObject("Part::Part2DObjectPython","Point")
             self.obj.addProperty("App::PropertyVector","Coordinates","Base","Coordinates")
             self.obj.addProperty("App::PropertyLinkList","Edges","Base", "Edges using this point")
             self.obj.addProperty("App::PropertyLink","Layer","Base", "The layer this point is in")
@@ -249,6 +279,24 @@ class SMPointVP (BaseVP):
     """ view provider for points"""
     def __init__(self,vobj):
         BaseVP.__init__(self,vobj)
+        self.attach(vobj)
+
+    def attach(self,vobj):
+        col = coin.SoBaseColor()
+        col.rgb.setValue(vobj.LineColor[0],
+                         vobj.LineColor[1],
+                         vobj.LineColor[2])
+        self.coords = coin.SoCoordinate3()
+        c = self.Object.Coordinates
+        self.coords.point.setValue(c.x, c.y, c.z)
+        self.pt = coin.SoAnnotation()
+        self.pt.addChild(col)
+        self.pt.addChild(self.coords)
+        marker=coin.SoMarkerSet()
+        marker.markerIndex=coin.SoMarkerSet.CIRCLE_FILLED_5_5
+        self.pt.addChild(marker)
+        vobj.RootNode.addChild(self.pt)
+
 
 class SMEdge:
     """
@@ -256,19 +304,21 @@ class SMEdge:
         It also have a layer it belongs to
     """
     def __init__(self,layer,start,end,crease=None):
-            self.obj = FreeCAD.ActiveDocument.addObject("App::FeaturePython","Point")
-            self.obj.addProperty("App::PropertyVector","Start","Base","Start point")
-            self.obj.addProperty("App::PropertyVector","End","Base","End point")
+            self.obj = FreeCAD.ActiveDocument.addObject("Part::Part2DObjectPython","Edge")
+            self.obj.addProperty("App::PropertyLink","Start","Base","Start point")
+            self.obj.addProperty("App::PropertyLink","End","Base","End point")
             self.obj.addProperty("App::PropertyLink","Layer","Base", "The layer this point is in")
-            self.obj.addProperty("App::PropertyEnumeration","Creased","Base","Creased?").Enum=["Creased","Normal"]
+            self.obj.addProperty("App::PropertyEnumeration","Creased","Base","Creased?").Creased=["Creased","Normal"]
             self.obj.addProperty("App::PropertyLinkList","Faces","Base", "Faces using this edge")
             self.obj.Layer=layer
+            layer.Proxy.registerEdge(self.obj)
             self.obj.Start=start
             self.obj.End=end
-            slef.setcreased(creased)
+            self.setcreased(crease)
             self.obj.Proxy = self
             self.Type = "SMEdge"
             SMEdgeVP(self.obj.ViewObject)
+            self.createGeometry(self.obj)
             
     def fromfef(self,data):
         #FIXME: the whole fef import stuff should be moved to Mesh
@@ -285,10 +335,17 @@ class SMEdge:
         else:
             self.obj.Creased = "Creased"
 
-    def createGeometry(self,obj,prop):
-        for e in self.Faces:
+    def createGeometry(self,fp):
+        FreeCAD.Console.PrintMessage('adding shape to %s (%s,%s) self=%s'%(fp,fp.Start.Coordinates,fp.End.Coordinates,self))
+        for e in fp.Faces:
             e.createGeometry()
-        #fixme own geometry...
+        plm = fp.Placement
+        fp.Shape=Part.Line(fp.Start.Coordinates,fp.End.Coordinates).toShape()
+        fp.Placement = plm
+        """
+>>> edge=App.getDocument("a").getObject("Edge")
+>>> edge.Proxy.createGeometry(edge)
+"""
 
 class SMEdgeVP (BaseVP):
     """ view provider for points"""

@@ -1,6 +1,7 @@
 # coding=UTF-8
 
 import FreeCAD, FreeCADGui 
+from FreeCAD import Gui
 
 from SurfaceMesh.Mesh import SMesh
 
@@ -48,5 +49,21 @@ class AddMesh:
     def IsActive(self):
         return FreeCAD.ActiveDocument is not None
 
+class Observe:
+    def GetResources(self): 
+       return {'Pixmap' : '', 'MenuText': 'Observe', 'ToolTip': 'Observe'} 
+
+    def IsActive(self):
+        return FreeCAD.ActiveDocument is not None
+
+    def Activated(self): 
+        v=Gui.activeDocument().activeView()
+        c = v.addEventCallback("SoEvent",self.logPosition)
+
+    def logPosition(self, info):
+       FreeCAD.Console.PrintMessage("EVENT %s\n"%(info["Type"],))
+       #FreeCAD.Console.PrintMessage("EVENT %s\n"%(info,))
+      
 
 FreeCADGui.addCommand('Add Mesh', AddMesh())
+FreeCADGui.addCommand('Observe', Observe())

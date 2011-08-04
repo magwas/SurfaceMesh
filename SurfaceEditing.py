@@ -7,8 +7,8 @@ import Part
 
 class AddMesh: 
     def Activated(self): 
-        FreeCAD.Console.PrintMessage('Hello, World!')
-        FreeCAD.ActiveDocument.openTransaction("Adding Mesh")
+        FreeCAD.Console.PrintMessage('Hello, World!\n')
+        FreeCAD.ActiveDocument.openTransaction("Adding Mesh\n")
         self.mesh = SMesh()
         sel = FreeCADGui.Selection.getSelection()
         for ob in sel:
@@ -23,7 +23,9 @@ class AddMesh:
     def meshWire(self,ob):
             firstp=None
             lastp=None
+            points=[]
             for p in ob.Points:
+                points.append(p)
                 sp = self.mesh.getOrCreatePoint(p,"points")
                 if firstp is None:
                     firstp=sp
@@ -32,6 +34,8 @@ class AddMesh:
                 lastp = sp
             if len(ob.Points) > 2 and ob.Closed:
                 self.mesh.getOrCreateEdge(lastp,firstp,"edges")
+            if ob.ViewObject.DisplayMode == "Flat Lines" and ob.Closed:
+                self.mesh.getOrCreateFace(points,"faces")
 
     @staticmethod
     def obtype(ob):
@@ -52,6 +56,7 @@ class BaseVP:
     def __init__(self,vobj):
         vobj.Proxy=self
         self.Object=vobj.Object
+        self.vobj=vobj
 
     def updatedata():
         return
@@ -153,6 +158,11 @@ class SMLayer:
         l.append(p)
         self.obj.Edges = l
 
+    def registerFace(self,p):
+        l = self.obj.Faces
+        l.append(p)
+        self.obj.Faces = l
+
     @staticmethod
     def getDefaultName():
         return "Default Layer"
@@ -217,16 +227,35 @@ class SMesh:
 
     def getOrCreateEdge(self,p1,p2,layername=None):
         """
-            gets or creates the point with the given vector
+            gets or creates the edge with the given endpoints
             arguments:
-                vect: the vector representing the coordinates of the point
+                pi, p2: the endpoints of the edge
                 layername: name of the layer where to put a new point. Optional. If omitted, the default layer is used.
         """
-        for edge in self.obj.InList:
-            if edge.Proxy.Type == "SMEdge":
-                if edge.Start==p1 and edge.End==p2:
-                    return edge
+        FreeCAD.Console.PrintMessage('search %s, %s\n'%(p1.Label,p2.Label))
+        for layer in self.obj.InList:
+            if layer.Proxy.Type == "SMLayer":
+                for edge in layer.InList:
+                    if edge.Proxy.Type == "SMEdge":
+                        if edge.Start==p1 and edge.End==p2:
+                            FreeCAD.Console.PrintMessage('found  %s, %s\n'%(edge.Start.Label,edge.End.Label))
+                            return edge
         return SMEdge(self.getOrCreateLayer(layername),p1,p2).obj
+
+    def getOrCreateFace(self,points,layername=None):
+        """
+            gets or creates the face with the given points
+            arguments:
+                points: the points of the face
+                layername: name of the layer where to put a new point. Optional. If omitted, the default layer is used.
+        """
+        for layer in self.obj.InList:
+            if layer.Proxy.Type == "SMLayer":
+                for face in layer.InList:
+                    if face.Proxy.Type == "SMface":
+                        if face.isOnPoints(points):
+                            return face
+        return SMFace(self.getOrCreateLayer(layername),points).obj
         
     
 class SMeshVP (BaseVP):
@@ -262,7 +291,7 @@ class SMPoint:
         return SMPoint(FreeCAD.Base.Vector(x,y,z))
 
     def __repr__(self):
-        return "[%s,%s,%s]"%(self.Coordinates.x,self.Coordinates.y,self.Coordinates.z)
+        return "[%s,%s,%s]"%(self.obj.Coordinates.x,self.obj.Coordinates.y,self.obj.Coordinates.z)
     def fefstr(self):
         #vertextype = 1, selected=0
         return "%s %s %s %s %s\r\n"%(self.Coordinates.x,self.Coordinates.y,self.Coordinates.z,1,0)
@@ -275,19 +304,31 @@ class SMPoint:
             for e in self.Edges:
                 e.createGeometry()
 
+
 class SMPointVP (BaseVP):
     """ view provider for points"""
     def __init__(self,vobj):
         BaseVP.__init__(self,vobj)
-        self.attach(vobj)
+        self.mkmarker()
+        self.show()
 
-    def attach(self,vobj):
+    def onChanged(self,vobj,prop):
+        #FreeCAD.Console.PrintMessage("onChanged  %s, %s\n"%(vobj,prop))
+        if prop == "Visibility":
+            if vobj.Visibility:
+                self.show()
+            else:
+                self.hide()
+        return
+
+    def mkmarker(self):
+        vobj=self.vobj
         col = coin.SoBaseColor()
         col.rgb.setValue(vobj.LineColor[0],
                          vobj.LineColor[1],
                          vobj.LineColor[2])
         self.coords = coin.SoCoordinate3()
-        c = self.Object.Coordinates
+        c = vobj.Object.Coordinates
         self.coords.point.setValue(c.x, c.y, c.z)
         self.pt = coin.SoAnnotation()
         self.pt.addChild(col)
@@ -295,7 +336,11 @@ class SMPointVP (BaseVP):
         marker=coin.SoMarkerSet()
         marker.markerIndex=coin.SoMarkerSet.CIRCLE_FILLED_5_5
         self.pt.addChild(marker)
-        vobj.RootNode.addChild(self.pt)
+
+    def show(self):
+        self.vobj.RootNode.addChild(self.pt)
+    def hide(self):
+        self.vobj.RootNode.removeChild(self.pt)
 
 
 class SMEdge:
@@ -336,19 +381,99 @@ class SMEdge:
             self.obj.Creased = "Creased"
 
     def createGeometry(self,fp):
-        FreeCAD.Console.PrintMessage('adding shape to %s (%s,%s) self=%s'%(fp,fp.Start.Coordinates,fp.End.Coordinates,self))
         for e in fp.Faces:
             e.createGeometry()
         plm = fp.Placement
         fp.Shape=Part.Line(fp.Start.Coordinates,fp.End.Coordinates).toShape()
         fp.Placement = plm
-        """
->>> edge=App.getDocument("a").getObject("Edge")
->>> edge.Proxy.createGeometry(edge)
-"""
 
 class SMEdgeVP (BaseVP):
     """ view provider for points"""
+    def __init__(self,vobj):
+        BaseVP.__init__(self,vobj)
+
+class SMFace:
+    """
+        A face is defined by a set of points.
+        All edges of the face are created if not already exists.
+        The face is stored as a sorted list of edges
+        It also have a layer it belongs to
+    """
+    def __init__(self,layer,points):
+            self.obj = FreeCAD.ActiveDocument.addObject("Part::Part2DObjectPython","Face")
+            self.obj.addProperty("App::PropertyLinkList","Edges","Base","End point")
+            self.obj.addProperty("App::PropertyLink","Layer","Base", "The layer this point is in")
+            self.obj.Layer=layer
+            layer.Proxy.registerFace(self.obj)
+            edges = self.getOrCreateEdges(points)
+            if not edges:
+                raise UnimplementedError, "Cannot add a face by noncircular edgeset"
+            self.obj.Edges=edges
+            self.Type = "SMFace"
+            self.obj.Proxy = self
+            SMFaceVP(self.obj.ViewObject)
+            self.createGeometry(self.obj)
+
+    def getOrCreateEdges(self,points):
+        fp=self.obj.Layer.Mesh.Proxy.getOrCreatePoint(points[0])
+        FreeCAD.Console.PrintMessage('p0=%s\n'%fp.Label)
+        lastp=fp
+        edges=[]
+        for pp in points[1:]:
+            p=self.obj.Layer.Mesh.Proxy.getOrCreatePoint(pp)
+            FreeCAD.Console.PrintMessage('p =%s\n'%p.Label)
+            edges.append(self.obj.Layer.Mesh.Proxy.getOrCreateEdge(lastp,p,self.obj.Layer.Label))
+            lastp = p
+        FreeCAD.Console.PrintMessage('lp=%s\n'%p.Label)
+        edges.append(self.obj.Layer.Mesh.Proxy.getOrCreateEdge(lastp,fp,self.obj.Layer.Label))
+        return edges
+
+    def getPoints(self):
+        points=[]
+        edges = self.obj.Edges
+        for e in edges:
+            points.append(e.Start)
+        points.append(edges[-1].End)
+        return points
+            
+    def isOnPoints(self,points):
+        myps=self.getPoints()
+        if len(points) != len(self.getPoints()):
+            return False
+        for i in range(len(points)):
+            if myps[i] != points[i]:
+                return False
+        return True
+        
+            
+    def fromfef(self,data):
+        # FIXME: it needs to be converted to this framework
+            if data:
+                data=data.strip().split(' ')
+                numpoints=int(data[0])
+                self.points=[]
+                #print data
+                for i in range(numpoints):
+                    self.points.append(ship.points[int(data[i+1])])
+                #print i
+                self.layer=ship.layers[int(data[i+2])]
+                self.selected=int(data[i+3])
+            if points:
+                self.points+=points
+            if layer:
+                self.layer=layer
+            self.plane=Plane(face=self)
+
+    def createGeometry(self,fp):
+        plm = fp.Placement
+        ps=self.getPoints()
+        pvs = map(lambda x: x.Coordinates, ps)
+        shape = Part.makePolygon(pvs)
+        fp.Shape = Part.Face(shape)
+        fp.Placement = plm
+
+class SMFaceVP (BaseVP):
+    """ view provider for Faces"""
     def __init__(self,vobj):
         BaseVP.__init__(self,vobj)
 

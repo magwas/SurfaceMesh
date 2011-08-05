@@ -53,12 +53,13 @@ class SMPointVP (BaseVP):
         self.show()
 
     def onChanged(self,vobj,prop):
-        #FreeCAD.Console.PrintMessage("onChanged  %s, %s\n"%(vobj,prop))
+        FreeCAD.Console.PrintMessage("onChanged  %s, %s\n"%(vobj,prop))
         if prop == "Visibility":
             if vobj.Visibility:
                 self.show()
             else:
                 self.hide()
+        FreeCAD.Console.PrintMessage("onChanged end\n")
         return
 
     def mkmarker(self):
@@ -82,8 +83,12 @@ class SMPointVP (BaseVP):
         self.pt.addChild(marker)
 
     def show(self):
+        FreeCAD.Console.PrintMessage("showing\n")
         self.vobj.RootNode.addChild(self.pt)
+        FreeCAD.Console.PrintMessage("showing end\n")
     def hide(self):
+        FreeCAD.Console.PrintMessage("hiding\n")
         self.vobj.RootNode.removeChild(self.pt)
+        FreeCAD.Console.PrintMessage("hidden\n")
 
 

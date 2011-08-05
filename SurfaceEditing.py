@@ -58,11 +58,16 @@ class Observe:
 
     def Activated(self): 
         v=Gui.activeDocument().activeView()
-        c = v.addEventCallback("SoEvent",self.logPosition)
+        c = v.addEventCallback("SoEvent",self.observe)
 
-    def logPosition(self, info):
-       FreeCAD.Console.PrintMessage("EVENT %s\n"%(info["Type"],))
-       #FreeCAD.Console.PrintMessage("EVENT %s\n"%(info,))
+    def observe(info):
+        """
+            mousedown: record position p0
+            mosemove if button is down: move all currently selected points with pcurrent-p0
+            mouseup: do finalisations if needed
+        """
+        #FreeCAD.Console.PrintMessage("EVENT %s\n"%(info["Type"],))
+        FreeCAD.Console.PrintMessage("EVENT %s\n"%(info,))
       
 
 FreeCADGui.addCommand('Add Mesh', AddMesh())

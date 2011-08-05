@@ -84,6 +84,7 @@ class SMPointVP (BaseVP):
 
     def show(self):
         FreeCAD.Console.PrintMessage("showing\n")
+        #the bug shown when this is called the second time
         self.vobj.RootNode.addChild(self.pt)
         FreeCAD.Console.PrintMessage("showing end\n")
     def hide(self):

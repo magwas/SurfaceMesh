@@ -25,7 +25,7 @@ class SMEdge:
             self.obj.Proxy = self
             self.Type = "SMEdge"
             SMEdgeVP(self.obj.ViewObject)
-            self.createGeometry(self.obj)
+            self.createGeometry()
             
     def fromfef(self,data):
         #FIXME: the whole fef import stuff should be moved to Mesh
@@ -42,12 +42,15 @@ class SMEdge:
         else:
             self.obj.Creased = "Creased"
 
-    def createGeometry(self,fp):
-        for e in fp.Faces:
-            e.createGeometry()
-        plm = fp.Placement
-        fp.Shape=Part.Line(fp.Start.Coordinates,fp.End.Coordinates).toShape()
-        fp.Placement = plm
+    def createGeometry(self):
+        o=self.obj
+        #FreeCAD.Console.PrintMessage("Edge creategeo %s"%self.obj.Label)
+        for e in o.Faces:
+            e.Proxy.createGeometry()
+        plm = o.Placement
+        #FreeCAD.Console.PrintMessage("%s,%s"%(o.Start.Coordinates,o.End.Coordinates))
+        o.Shape=Part.Line(o.Start.Coordinates,o.End.Coordinates).toShape()
+        o.Placement = plm
 
 class SMEdgeVP (BaseVP):
     """ view provider for points"""

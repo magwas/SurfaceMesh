@@ -72,7 +72,10 @@ class SMesh:
                         if edge.Start==p1 and edge.End==p2:
                             FreeCAD.Console.PrintMessage('found  %s, %s\n'%(edge.Start.Label,edge.End.Label))
                             return edge
-        return SMEdge(self.getOrCreateLayer(layername),p1,p2).obj
+        e=SMEdge(self.getOrCreateLayer(layername),p1,p2).obj
+        p1.Edges += [e]
+        p2.Edges += [e]
+        return e
 
     def getOrCreateFace(self,points,layername=None):
         """
@@ -87,7 +90,10 @@ class SMesh:
                     if face.Proxy.Type == "SMface":
                         if face.isOnPoints(points):
                             return face
-        return SMFace(self.getOrCreateLayer(layername),points).obj
+        f = SMFace(self.getOrCreateLayer(layername),points).obj
+        for e in f.Edges:
+            e.Faces += [f]
+        return f
         
     
 class SMeshVP (BaseVP):

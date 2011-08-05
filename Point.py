@@ -24,6 +24,7 @@ class SMPoint:
             self.obj.Proxy = self
             self.Type = "SMPoint"
             SMPointVP(self.obj.ViewObject)
+            self.p0=None
             
     @staticmethod
     def fromfef(data):
@@ -39,10 +40,22 @@ class SMPoint:
     def execute(self,obj):
         pass
         
+    def endMoveByMouse(self):
+        self.p0=None
+
+    def moveByMouse(self,delta):
+        if not self.p0:
+            self.p0 = self.obj.Coordinates
+        self.obj.Coordinates = self.p0 + delta
+        #self.ViewObject.mkmarker()
+
     def onChanged(self,obj,prop):
+        #FreeCAD.Console.PrintMessage("onChangedo  %s, %s\n"%(obj,prop))
         if prop in ["Coordinates"]:
-            for e in self.Edges:
-                e.createGeometry()
+            self.obj.ViewObject.hide()
+            self.obj.ViewObject.show()
+            for e in self.obj.Edges:
+                e.Proxy.createGeometry()
 
 
 class SMPointVP (BaseVP):
@@ -53,13 +66,13 @@ class SMPointVP (BaseVP):
         self.show()
 
     def onChanged(self,vobj,prop):
-        FreeCAD.Console.PrintMessage("onChanged  %s, %s\n"%(vobj,prop))
+        #FreeCAD.Console.PrintMessage("onChanged  %s, %s\n"%(vobj,prop))
         if prop == "Visibility":
             if vobj.Visibility:
                 self.show()
             else:
                 self.hide()
-        FreeCAD.Console.PrintMessage("onChanged end\n")
+        #FreeCAD.Console.PrintMessage("onChanged end\n")
         return
 
     def mkmarker(self):
@@ -83,13 +96,15 @@ class SMPointVP (BaseVP):
         self.pt.addChild(marker)
 
     def show(self):
-        FreeCAD.Console.PrintMessage("showing\n")
+        #FreeCAD.Console.PrintMessage("showing\n")
+        #FIXME this is a workaround
+        self.mkmarker()
         #the bug shown when this is called the second time
         self.vobj.RootNode.addChild(self.pt)
-        FreeCAD.Console.PrintMessage("showing end\n")
+        #FreeCAD.Console.PrintMessage("showing end\n")
     def hide(self):
-        FreeCAD.Console.PrintMessage("hiding\n")
+        #FreeCAD.Console.PrintMessage("hiding\n")
         self.vobj.RootNode.removeChild(self.pt)
-        FreeCAD.Console.PrintMessage("hidden\n")
+        #FreeCAD.Console.PrintMessage("hidden\n")
 
 

@@ -25,7 +25,7 @@ class SMFace:
             self.Type = "SMFace"
             self.obj.Proxy = self
             SMFaceVP(self.obj.ViewObject)
-            self.createGeometry(self.obj)
+            self.createGeometry()
 
     def getOrCreateEdges(self,points):
         fp=self.obj.Layer.Mesh.Proxy.getOrCreatePoint(points[0])
@@ -77,7 +77,8 @@ class SMFace:
                 self.layer=layer
             self.plane=Plane(face=self)
 
-    def createGeometry(self,fp):
+    def createGeometry(self):
+        fp = self.obj
         plm = fp.Placement
         ps=self.getPoints()
         pvs = map(lambda x: x.Coordinates, ps)

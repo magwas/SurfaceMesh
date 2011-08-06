@@ -4,6 +4,13 @@ import FreeCAD, FreeCADGui
 from pivy import coin
 import Part
 
+class Base:
+    def __getstate__(self):
+        return None
+
+    def __setstate__(self,state):
+        return None
+
 class BaseVP:
     """Basic view provider"""
     def __init__(self,vobj):
@@ -11,7 +18,7 @@ class BaseVP:
         self.Object=vobj.Object
         self.vobj=vobj
 
-    def updatedata():
+    def updateData(self, fp, prop):
         return
 
     def onChanged(self,vobj,prop):

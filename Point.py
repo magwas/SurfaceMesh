@@ -3,10 +3,10 @@
 import FreeCAD
 from pivy import coin
 
-from Base import BaseVP
+from Base import Base, BaseVP
 
 
-class SMPoint:
+class SMPoint(Base):
     """
         A point is defined by a vector.
         It keeps a list of references to edges, so when it moved, the edges can be updated

@@ -3,9 +3,9 @@
 import FreeCAD
 import Part
 
-from Base import BaseVP
+from Base import Base, BaseVP
 
-class SMEdge:
+class SMEdge(Base):
     """
         An edge is defined by the start and end point.
         It also have a layer it belongs to

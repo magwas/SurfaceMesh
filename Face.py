@@ -3,9 +3,9 @@
 import FreeCAD
 import Part
 
-from Base import BaseVP
+from Base import Base,BaseVP
 
-class SMFace:
+class SMFace(Base):
     """
         A face is defined by a set of points.
         All edges of the face are created if not already exists.

@@ -2,9 +2,9 @@
 
 import FreeCAD
 
-from Base import BaseVP
+from Base import Base,BaseVP
 
-class SMLayer:
+class SMLayer(Base):
     """ A layer """
     def __init__(self,mesh,name=None):
             if name == None:

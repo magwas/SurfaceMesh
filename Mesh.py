@@ -1,7 +1,7 @@
 # coding=UTF-8
 
 import FreeCAD
-from Base import BaseVP
+from Base import Base, BaseVP
 
 from Layer import SMLayer
 from Point import SMPoint
@@ -9,7 +9,7 @@ from Edge import SMEdge
 from Face import SMFace
 
 
-class SMesh:
+class SMesh(Base):
     """ A surface mesh """
     def __init__(self):
             self.obj = FreeCAD.ActiveDocument.addObject("App::FeaturePython","Mesh")

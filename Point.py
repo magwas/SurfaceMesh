@@ -11,6 +11,7 @@ class SMPoint(Base):
         A point is defined by a vector.
         It keeps a list of references to edges, so when it moved, the edges can be updated
     """
+    Type = "SMPoint"
     def __init__(self,layer,vect=None):
             self.obj = FreeCAD.ActiveDocument.addObject("Part::Part2DObjectPython","Point")
             self.obj.addProperty("App::PropertyVector","Coordinates","Base","Coordinates")
@@ -22,17 +23,20 @@ class SMPoint(Base):
                 vect=FreeCAD.Base.Vector(0,0,0)
             self.obj.Coordinates=vect
             self.obj.Proxy = self
-            self.Type = "SMPoint"
             SMPointVP(self.obj.ViewObject)
             self.p0=None
+
+    def __setstate__(self,state):
+        self.p0=None
+        Base.__setstate__(self,state)
             
     @staticmethod
     def fromfef(data):
         x,y,z,vertextype,selected=data.strip().split(' ')
         return SMPoint(FreeCAD.Base.Vector(x,y,z))
 
-    def __repr__(self):
-        return "[%s,%s,%s]"%(self.obj.Coordinates.x,self.obj.Coordinates.y,self.obj.Coordinates.z)
+    #def __repr__(self):
+    #    return "[%s,%s,%s]"%(self.obj.Coordinates.x,self.obj.Coordinates.y,self.obj.Coordinates.z)
     def fefstr(self):
         #vertextype = 1, selected=0
         return "%s %s %s %s %s\r\n"%(self.Coordinates.x,self.Coordinates.y,self.Coordinates.z,1,0)
@@ -44,18 +48,21 @@ class SMPoint(Base):
         self.p0=None
 
     def moveByMouse(self,delta):
+        FreeCAD.Console.PrintMessage("%s.mBM(%s) p0=%s\n"%(self,delta,self.p0))
         if not self.p0:
             self.p0 = self.obj.Coordinates
         self.obj.Coordinates = self.p0 + delta
         #self.ViewObject.mkmarker()
 
     def onChanged(self,obj,prop):
-        #FreeCAD.Console.PrintMessage("onChangedo  %s, %s\n"%(obj,prop))
-        if prop in ["Coordinates"]:
+        FreeCAD.Console.PrintMessage("onChangedo  %s, %s\n"%(obj,prop))
+        if prop == "Coordinates":
             self.obj.ViewObject.hide()
             self.obj.ViewObject.show()
             for e in self.obj.Edges:
                 e.Proxy.createGeometry()
+        else:
+            Base.onChanged(self,obj,prop)
 
 
 class SMPointVP (BaseVP):

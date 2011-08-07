@@ -17,6 +17,7 @@ class AddMesh:
             else:
                 FreeCAD.Console.PrintMessage('Cannot mesh object %s(%s)\n'%(ob.Label,tipe))
         FreeCAD.ActiveDocument.commitTransaction()
+        FreeCAD.ActiveDocument.recompute()
 
 
     def meshWire(self,ob):

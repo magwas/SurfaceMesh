@@ -101,6 +101,7 @@ class SMeshVP (BaseVP):
     def __init__(self,vobj):
         BaseVP.__init__(self,vobj)
     def claimChildren(self):
+        FreeCAD.Console.PrintMessage("claim %s\n"%(self.Object.Label))
         return self.Object.InList
 
 

@@ -4,12 +4,21 @@ import FreeCAD, FreeCADGui
 from pivy import coin
 import Part
 
-class Base:
+
+class Base(object):
+    def __getattribute__(self,name):
+        FreeCAD.Console.PrintMessage("%s.%s\n"%(self,name))
+        return object.__getattribute__(self,name)
     def __getstate__(self):
-        return None
+        return "nothing"
 
     def __setstate__(self,state):
+        FreeCAD.Console.PrintMessage("setstate%s,%s\n"%(self,state))
         return None
+
+    def onChanged(self,obj,prop):
+        if prop == 'Proxy':
+            self.obj = obj
 
 class BaseVP:
     """Basic view provider"""
@@ -18,6 +27,10 @@ class BaseVP:
         self.Object=vobj.Object
         self.vobj=vobj
 
+    #def __getattribute__(self,name):
+    #    FreeCAD.Console.PrintMessage("%s.%s\n"%(self,name))
+    #    object.__getattribute__(self,name)
+
     def updateData(self, fp, prop):
         return
 
@@ -25,6 +38,9 @@ class BaseVP:
         return
 
     def attach(self,obj):
+        FreeCAD.Console.PrintMessage("attached %s\n"%(obj.Object.Label))
+        self.vobj = obj
+        self.Object = obj.Object
         return
 
     def getDisplayModes(self,obj):
@@ -38,9 +54,13 @@ class BaseVP:
         return None
 
     def __setstate__(self,state):
+        self.vobj = None
+        self.Object = None
         return None
 
     def claimChildren(self):
+        FreeCAD.Console.PrintMessage("claim \n")
+        FreeCAD.Console.PrintMessage("claim %s\n"%(self.Object.Label))
         return []
 
     def getIcon(self):

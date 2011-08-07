@@ -10,9 +10,11 @@ class SMPoint(DocumentObject):
         A point is defined by a vector.
         It keeps a list of references to edges, so when it moved, the edges can be updated
     """
-    Type = "SMPoint"
+    pytype = "SMPoint"
     def __init__(self,layer,vect=None):
             DocumentObject.__init__(self)
+            self.p0=None
+            self.pt=None
             FreeCAD.ActiveDocument.addObject("Part::Part2DObjectPython","Point",self,self)
             self.addProperty("App::PropertyVector","Coordinates","Base","Coordinates")
             self.addProperty("App::PropertyLinkList","Edges","Base", "Edges using this point")
@@ -21,9 +23,8 @@ class SMPoint(DocumentObject):
             layer.registerPoint(self)
             if vect is None:
                 vect=FreeCAD.Base.Vector(0,0,0)
-            self.Coordinates=vect
-            self.p0=None
             self.mkmarker()
+            self.Coordinates=vect
             self.show()
 
     def __setstate__(self,state):
@@ -56,9 +57,11 @@ class SMPoint(DocumentObject):
         FreeCAD.Console.PrintMessage("onChangedo  %s, %s\n"%(self,prop))
         if prop == "Coordinates":
             self.hide()
-            self.show()
+            c = self.Coordinates
+            self.coords.point.setValue(c.x, c.y, c.z)
             for e in self.Edges:
-                e.createGeometry()
+                e.Proxy.createGeometry()
+            self.show()
         elif prop == "Visibility":
             if self.Visibility:
                 self.show()
@@ -89,13 +92,12 @@ class SMPoint(DocumentObject):
     def show(self):
         FreeCAD.Console.PrintMessage("showing\n")
         #FIXME this is a workaround
-        self.mkmarker()
+        #self.mkmarker()
         #the bug shown when this is called the second time
         self.RootNode.addChild(self.pt)
         FreeCAD.Console.PrintMessage("showing end\n")
     def hide(self):
-        FreeCAD.Console.PrintMessage("hiding\n")
-        self.mkmarker()
+        FreeCAD.Console.PrintMessage("hiding %s\n"%self)
         self.RootNode.removeChild(self.pt)
         FreeCAD.Console.PrintMessage("hidden\n")
 

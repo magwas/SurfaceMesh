@@ -10,6 +10,7 @@ class SMEdge(DocumentObject):
         An edge is defined by the start and end point.
         It also have a layer it belongs to
     """
+    pytype="SMEdge"
     def __init__(self,layer,start,end,crease=None):
             DocumentObject.__init__(self)
             FreeCAD.ActiveDocument.addObject("Part::Part2DObjectPython","Edge",self,self)
@@ -23,7 +24,6 @@ class SMEdge(DocumentObject):
             self.Start=start.getobj()
             self.End=end.getobj()
             self.setcreased(crease)
-            self.Type = "SMEdge"
             self.createGeometry()
             
     def fromfef(self,data):
@@ -45,7 +45,7 @@ class SMEdge(DocumentObject):
         o=self
         #FreeCAD.Console.PrintMessage("Edge creategeo %s"%self.Label)
         for e in o.Faces:
-            e.createGeometry()
+            e.Proxy.createGeometry()
         plm = o.Placement
         #FreeCAD.Console.PrintMessage("%s,%s"%(o.Start.Coordinates,o.End.Coordinates))
         o.Shape=Part.Line(o.Start.Coordinates,o.End.Coordinates).toShape()

@@ -50,12 +50,12 @@ class AddMesh:
     def IsActive(self):
         return FreeCAD.ActiveDocument is not None
 
-class Observe:
+class SurfaceEdit:
     def __init__(self):
         self.do=False
 
     def GetResources(self): 
-       return {'Pixmap' : '', 'MenuText': 'Observe', 'ToolTip': 'Observe'} 
+       return {'Pixmap' : '', 'MenuText': 'Surface Editing', 'ToolTip': 'Turns on/off the surface editing mode'} 
 
     def IsActive(self):
         return FreeCAD.ActiveDocument is not None
@@ -120,4 +120,4 @@ class Observe:
       
 
 FreeCADGui.addCommand('Add Mesh', AddMesh())
-FreeCADGui.addCommand('Observe', Observe())
+FreeCADGui.addCommand('SurfaceEdit', SurfaceEdit())

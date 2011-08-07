@@ -22,11 +22,11 @@ mesh.Layers
 
 class SMesh(DocumentObject):
     """ A surface mesh """
+    pytype = "SMesh"
     def __init__(self):
             DocumentObject.__init__(self)
             FreeCAD.ActiveDocument.addObject("App::FeaturePython","Mesh",self,self)
             self.addProperty("App::PropertyLinkList","Layers","Base", "Layers")
-            self.Type = "SMesh"
 
     def getOrCreateLayer(self,name=None):
         """
@@ -37,7 +37,8 @@ class SMesh(DocumentObject):
         if name == None:
             name = SMLayer.getDefaultName()
         for layer in self.InList:
-            if layer.Type == "SMLayer":
+            layer=layer.Proxy
+            if layer.pytype == "SMLayer":
                 if layer.Label == name:
                     return layer
         l = SMLayer(self,name)
@@ -45,7 +46,7 @@ class SMesh(DocumentObject):
         
     def registerLayer(self,l):
         layers = self.Layers
-        layers.append(l)
+        layers.append(l.getobj())
         self.Layers = layers
         
     def getOrCreatePoint(self,vect,layername=None):
@@ -56,9 +57,11 @@ class SMesh(DocumentObject):
                 layername: name of the layer where to put a new point. Optional. If omitted, the default layer is used.
         """
         for layer in self.InList:
-            if layer.Type == "SMLayer":
+            layer=layer.Proxy
+            if layer.pytype == "SMLayer":
                 for point in layer.InList:
-                    if point.Type == "SMPoint":
+                    point=point.Proxy
+                    if point.pytype == "SMPoint":
                         if point.Coordinates == vect:
                             #FIXME maybe some error should be allowed...
                             return point
@@ -73,9 +76,11 @@ class SMesh(DocumentObject):
         """
         FreeCAD.Console.PrintMessage('search %s, %s\n'%(p1.Label,p2.Label))
         for layer in self.InList:
-            if layer.Type == "SMLayer":
+            layer=layer.Proxy
+            if layer.pytype == "SMLayer":
                 for edge in layer.InList:
-                    if edge.Type == "SMEdge":
+                    edge=edge.Proxy
+                    if edge.pytype == "SMEdge":
                         if edge.Start==p1 and edge.End==p2:
                             FreeCAD.Console.PrintMessage('found  %s, %s\n'%(edge.Start.Label,edge.End.Label))
                             return edge
@@ -92,9 +97,11 @@ class SMesh(DocumentObject):
                 layername: name of the layer where to put a new point. Optional. If omitted, the default layer is used.
         """
         for layer in self.InList:
-            if layer.Type == "SMLayer":
+            layer=layer.Proxy
+            if layer.pytype == "SMLayer":
                 for face in layer.InList:
-                    if face.Type == "SMface":
+                    face = face.Proxy
+                    if face.pytype == "SMface":
                         if face.isOnPoints(points):
                             return face
         f = SMFace(self.getOrCreateLayer(layername),points)
@@ -104,6 +111,6 @@ class SMesh(DocumentObject):
         
     def claimChildren(self):
         FreeCAD.Console.PrintMessage("claim %s\n"%(self.Object.Label))
-        return self.Object.InList
+        return self.InList
 
 

@@ -30,7 +30,7 @@ class SurfaceEditingWorkbench (Workbench):
     MenuText = "Surface Mesh Editing"
     def Initialize(self):
         import SurfaceEditing 
-        list = ["Add Mesh", "Observe"] 
+        list = ["Add Mesh", "SurfaceEdit"] 
         self.appendToolbar("Surface Editing",list) 
         
 Gui.addWorkbench(SurfaceEditingWorkbench())

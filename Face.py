@@ -12,6 +12,7 @@ class SMFace(DocumentObject):
         The face is stored as a sorted list of edges
         It also have a layer it belongs to
     """
+    pytype = "SMFace"
     def __init__(self,layer,points):
             DocumentObject.__init__(self)
             FreeCAD.ActiveDocument.addObject("Part::Part2DObjectPython","Face",self,self)
@@ -23,7 +24,6 @@ class SMFace(DocumentObject):
             if not edges:
                 raise UnimplementedError, "Cannot add a face by noncircular edgeset"
             self.Edges = map(lambda x: x.getobj(), edges)
-            self.Type = "SMFace"
             self.createGeometry()
 
     def getOrCreateEdges(self,points):

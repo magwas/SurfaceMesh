@@ -6,6 +6,7 @@ from DocumentObject import DocumentObject
 
 class SMLayer(DocumentObject):
     """ A layer """
+    pytype = "SMLayer"
     def __init__(self,mesh,name=None):
             DocumentObject.__init__(self)
             if name == None:
@@ -16,9 +17,8 @@ class SMLayer(DocumentObject):
             self.addProperty("App::PropertyLinkList","Faces","Base", "Faces")
             self.addProperty("App::PropertyLink","Mesh","Base", "The mesh this point is in")
             self.Mesh=mesh.getobj()
-            mesh.registerLayer(self.getobj())
+            mesh.registerLayer(self)
             self.Label = name
-            self.Type = "SMLayer"
 
     def registerPoint(self,p):
         self.Points += [p.getobj()]

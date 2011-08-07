@@ -35,12 +35,19 @@ class DocumentObject(object):
         return self.__vobject__
 
     def onChanged(self,prop):
+        FreeCAD.Console.PrintMessage("base.onchanged %s\n"%(self))
         return
 
     def attach(self):
-        FreeCAD.Console.PrintMessage("attached %s\n"%(self.Object.Label))
+        FreeCAD.Console.PrintMessage("attached %s\n"%(self))
         return
 
     def execute(self):
+        return
+
+    def __getstate__(self):
+        return "spam"
+
+    def __setstate__(self,value):
         return
 

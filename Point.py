@@ -3,32 +3,32 @@
 import FreeCAD
 from pivy import coin
 
-from Base import Base, BaseVP
+from DocumentObject import DocumentObject
 
-
-class SMPoint(Base):
+class SMPoint(DocumentObject):
     """
         A point is defined by a vector.
         It keeps a list of references to edges, so when it moved, the edges can be updated
     """
     Type = "SMPoint"
     def __init__(self,layer,vect=None):
-            self.obj = FreeCAD.ActiveDocument.addObject("Part::Part2DObjectPython","Point")
-            self.obj.addProperty("App::PropertyVector","Coordinates","Base","Coordinates")
-            self.obj.addProperty("App::PropertyLinkList","Edges","Base", "Edges using this point")
-            self.obj.addProperty("App::PropertyLink","Layer","Base", "The layer this point is in")
-            self.obj.Layer=layer
-            layer.Proxy.registerPoint(self.obj)
+            DocumentObject.__init__(self)
+            FreeCAD.ActiveDocument.addObject("Part::Part2DObjectPython","Point",self,self)
+            self.addProperty("App::PropertyVector","Coordinates","Base","Coordinates")
+            self.addProperty("App::PropertyLinkList","Edges","Base", "Edges using this point")
+            self.addProperty("App::PropertyLink","Layer","Base", "The layer this point is in")
+            self.Layer=layer.getobj()
+            layer.registerPoint(self)
             if vect is None:
                 vect=FreeCAD.Base.Vector(0,0,0)
-            self.obj.Coordinates=vect
-            self.obj.Proxy = self
-            SMPointVP(self.obj.ViewObject)
+            self.Coordinates=vect
             self.p0=None
+            self.mkmarker()
+            self.show()
 
     def __setstate__(self,state):
         self.p0=None
-        Base.__setstate__(self,state)
+        DocumentObject.__setstate__(self,state)
             
     @staticmethod
     def fromfef(data):
@@ -41,59 +41,43 @@ class SMPoint(Base):
         #vertextype = 1, selected=0
         return "%s %s %s %s %s\r\n"%(self.Coordinates.x,self.Coordinates.y,self.Coordinates.z,1,0)
     # FreeCad methods
-    def execute(self,obj):
-        pass
-        
+
     def endMoveByMouse(self):
         self.p0=None
 
     def moveByMouse(self,delta):
         FreeCAD.Console.PrintMessage("%s.mBM(%s) p0=%s\n"%(self,delta,self.p0))
         if not self.p0:
-            self.p0 = self.obj.Coordinates
-        self.obj.Coordinates = self.p0 + delta
-        #self.ViewObject.mkmarker()
+            self.p0 = self.Coordinates
+        self.Coordinates = self.p0 + delta
+        #self.mkmarker()
 
-    def onChanged(self,obj,prop):
-        FreeCAD.Console.PrintMessage("onChangedo  %s, %s\n"%(obj,prop))
+    def onChanged(self,prop):
+        FreeCAD.Console.PrintMessage("onChangedo  %s, %s\n"%(self,prop))
         if prop == "Coordinates":
-            self.obj.ViewObject.hide()
-            self.obj.ViewObject.show()
-            for e in self.obj.Edges:
-                e.Proxy.createGeometry()
-        else:
-            Base.onChanged(self,obj,prop)
-
-
-class SMPointVP (BaseVP):
-    """ view provider for points"""
-    def __init__(self,vobj):
-        BaseVP.__init__(self,vobj)
-        self.mkmarker()
-        self.show()
-
-    def onChanged(self,vobj,prop):
-        #FreeCAD.Console.PrintMessage("onChanged  %s, %s\n"%(vobj,prop))
-        if prop == "Visibility":
-            if vobj.Visibility:
+            self.hide()
+            self.show()
+            for e in self.Edges:
+                e.createGeometry()
+        elif prop == "Visibility":
+            if self.Visibility:
                 self.show()
             else:
                 self.hide()
-        #FreeCAD.Console.PrintMessage("onChanged end\n")
-        return
+        else:
+            DocumentObject.onChanged(self,prop)
 
     def mkmarker(self):
-        vobj=self.vobj
         col = coin.SoBaseColor()
-        col.rgb.setValue(vobj.LineColor[0],
-                         vobj.LineColor[1],
-                         vobj.LineColor[2])
+        col.rgb.setValue(self.LineColor[0],
+                         self.LineColor[1],
+                         self.LineColor[2])
         self.coords = coin.SoCoordinate3()
-        c = vobj.Object.Coordinates
+        c = self.Coordinates
         self.coords.point.setValue(c.x, c.y, c.z)
         self.pt = coin.SoType.fromName("SoFCSelection").createInstance()
         self.pt.documentName.setValue(FreeCAD.ActiveDocument.Name)
-        oname=str(vobj.Object.Label)
+        oname=str(self.Label)
         self.pt.objectName.setValue(oname)
         self.pt.subElementName.setValue("0")
         self.pt.addChild(col)
@@ -103,15 +87,16 @@ class SMPointVP (BaseVP):
         self.pt.addChild(marker)
 
     def show(self):
-        #FreeCAD.Console.PrintMessage("showing\n")
+        FreeCAD.Console.PrintMessage("showing\n")
         #FIXME this is a workaround
         self.mkmarker()
         #the bug shown when this is called the second time
-        self.vobj.RootNode.addChild(self.pt)
-        #FreeCAD.Console.PrintMessage("showing end\n")
+        self.RootNode.addChild(self.pt)
+        FreeCAD.Console.PrintMessage("showing end\n")
     def hide(self):
-        #FreeCAD.Console.PrintMessage("hiding\n")
-        self.vobj.RootNode.removeChild(self.pt)
-        #FreeCAD.Console.PrintMessage("hidden\n")
+        FreeCAD.Console.PrintMessage("hiding\n")
+        self.mkmarker()
+        self.RootNode.removeChild(self.pt)
+        FreeCAD.Console.PrintMessage("hidden\n")
 
 

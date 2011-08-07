@@ -2,51 +2,37 @@
 
 import FreeCAD
 
-from Base import Base,BaseVP
+from DocumentObject import DocumentObject
 
-class SMLayer(Base):
+class SMLayer(DocumentObject):
     """ A layer """
     def __init__(self,mesh,name=None):
+            DocumentObject.__init__(self)
             if name == None:
                 name = self.getDefaultName()
-            self.obj = FreeCAD.ActiveDocument.addObject("App::FeaturePython","Layer")
-            self.obj.addProperty("App::PropertyLinkList","Edges","Base", "Edges")
-            self.obj.addProperty("App::PropertyLinkList","Points","Base", "Points")
-            self.obj.addProperty("App::PropertyLinkList","Faces","Base", "Faces")
-            self.obj.addProperty("App::PropertyLink","Mesh","Base", "The mesh this point is in")
-            self.obj.Mesh=mesh.obj
-            mesh.registerLayer(self.obj)
-            self.obj.Label = name
+            FreeCAD.ActiveDocument.addObject("App::FeaturePython","Layer",self,self)
+            self.addProperty("App::PropertyLinkList","Edges","Base", "Edges")
+            self.addProperty("App::PropertyLinkList","Points","Base", "Points")
+            self.addProperty("App::PropertyLinkList","Faces","Base", "Faces")
+            self.addProperty("App::PropertyLink","Mesh","Base", "The mesh this point is in")
+            self.Mesh=mesh.getobj()
+            mesh.registerLayer(self.getobj())
+            self.Label = name
             self.Type = "SMLayer"
-            SMLayerVP(self.obj.ViewObject)
-            self.obj.Proxy = self
 
     def registerPoint(self,p):
-        l = self.obj.Points
-        l.append(p)
-        self.obj.Points = l
+        self.Points += [p.getobj()]
 
     def registerEdge(self,p):
-        l = self.obj.Edges
-        l.append(p)
-        self.obj.Edges = l
+        self.Edges += [p.getobj()]
 
     def registerFace(self,p):
-        l = self.obj.Faces
-        l.append(p)
-        self.obj.Faces = l
+        self.Faces += [p.getobj()]
 
     @staticmethod
     def getDefaultName():
         return "Default Layer"
 
-    def execute(self,fp):
-        pass
-
-class SMLayerVP (BaseVP):
-    """ view provider for points"""
-    def __init__(self,vobj):
-        BaseVP.__init__(self,vobj)
     def claimChildren(self):
         FreeCAD.Console.PrintMessage("claim %s\n"%(self.Object.Label))
         return self.Object.Edges + self.Object.Points + self.Object.Faces

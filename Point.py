@@ -55,12 +55,10 @@ class SMPoint(DocumentObject):
     def onChanged(self,prop):
         FreeCAD.Console.PrintMessage("onChangedo  %s, %s\n"%(self,prop))
         if prop == "Coordinates":
-            self.hide()
             c = self.Coordinates
             self.coords.point.setValue(c.x, c.y, c.z)
             for e in self.Edges:
                 e.Proxy.createGeometry()
-            self.show()
         elif prop == "Visibility":
             if self.Visibility:
                 self.show()

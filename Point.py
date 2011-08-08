@@ -43,14 +43,13 @@ class SMPoint(DocumentObject):
         return "%s %s %s %s %s\r\n"%(self.Coordinates.x,self.Coordinates.y,self.Coordinates.z,1,0)
     # FreeCad methods
 
-    def endMoveByMouse(self):
-        self.p0=None
-
-    def moveByMouse(self,delta):
-        FreeCAD.Console.PrintMessage("%s.mBM(%s) p0=%s\n"%(self,delta,self.p0))
-        if not self.p0:
-            self.p0 = self.Coordinates
-        self.Coordinates = self.p0 + delta
+    def dragStart(self,p):
+        FreeCAD.Console.PrintMessage("%s.start(%s)\n"%(self,p))
+    def dragEnd(self,p):
+        FreeCAD.Console.PrintMessage("%s.end(%s)\n"%(self,p))
+    def dragMove(self,p):
+        FreeCAD.Console.PrintMessage("%s.move(%s)\n"%(self,p))
+        self.Coordinates = p
         #self.mkmarker()
 
     def onChanged(self,prop):
@@ -92,7 +91,7 @@ class SMPoint(DocumentObject):
     def show(self):
         FreeCAD.Console.PrintMessage("showing\n")
         #FIXME this is a workaround
-        #self.mkmarker()
+        self.mkmarker()
         #the bug shown when this is called the second time
         self.RootNode.addChild(self.pt)
         FreeCAD.Console.PrintMessage("showing end\n")

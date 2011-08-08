@@ -5,6 +5,8 @@ from FreeCAD import Gui
 
 from SurfaceMesh.Mesh import SMesh
 
+from pivy import coin
+
 class AddMesh: 
     def Activated(self): 
         FreeCAD.ActiveDocument.openTransaction("Adding Mesh\n")
@@ -50,9 +52,16 @@ class AddMesh:
     def IsActive(self):
         return FreeCAD.ActiveDocument is not None
 
+"""
+import SurfaceEditing
+
+se = SurfaceEditing.SurfaceEdit()
+se.Activated()
+
+"""
 class SurfaceEdit:
     def __init__(self):
-        self.do=False
+        self.obj=None
 
     def GetResources(self): 
        return {'Pixmap' : '', 'MenuText': 'Surface Editing', 'ToolTip': 'Turns on/off the surface editing mode'} 
@@ -61,62 +70,67 @@ class SurfaceEdit:
         return FreeCAD.ActiveDocument is not None
 
     def Activated(self): 
+        FreeCAD.Console.PrintMessage("activate\n")
+        self.obj=None
         self.view=Gui.activeDocument().activeView()
-        c = self.view.addEventCallback("SoEvent",self.observe)
+        self.call = self.view.addEventCallback("SoKeyboardEvent",self.observe)
+        self.callp = self.view.addEventCallbackPivy(coin.SoMouseButtonEvent.getClassTypeId(),self.getMouseClick) 
+        self.callm = self.view.addEventCallbackPivy(coin.SoLocation2Event.getClassTypeId(),self.getMouseMove) 
 
-    def mouseDown(self,pos):
-        self.m0=pos
-        self.vd0=self.view.getViewDirection()
-        self.p0=self.view.getPoint(self.m0)
+    def getPoint(self):
+        return Gui.ActiveDocument.ActiveView.getPoint(tuple(self.event.getPosition().getValue()))
 
-    def mouseUp(self,pos):
-        sel = FreeCADGui.Selection.getSelection()
-        for ob in sel:
-            mover = None
-            if getattr(ob,"Proxy",None):
-                mover = getattr(ob.Proxy,"endMoveByMouse",None)
-            #FreeCAD.Console.PrintMessage("mover=%s"%mover)
-            if mover:
-                mover()
-
-    def mouseMove(self,pos):
-        vd0 = self.view.getViewDirection()
-        if vd0 != self.vd0:
-            # the user has changed the viewpoint
+    def getMouseMove(self,event_cb):
+        if not self.obj:
             return
-        delta = self.view.getPoint(pos) - self.p0
-        sel = FreeCADGui.Selection.getSelection()
-        for ob in sel:
-            mover = None
-            if getattr(ob,"Proxy",None):
-                mover = getattr(ob.Proxy,"moveByMouse",None)
-            if mover:
-                mover(delta)
+        FreeCAD.Console.PrintMessage("moving\n")
+        self.event=event_cb.getEvent()
+        self.p0 = self.getPoint()
+        cb = getattr(self.obj,'dragMove',self.dummycb)
+        cb(self.p0)
+        
+    def dummycb(self,p):
+        pass
 
-#EVENT {'ShiftDown': False, 'CtrlDown': False, 'Time': 'Friday, 08/05/11 02:11:56 PM', 'Position': (59, 367), 'AltDown': False, 'Type': 'SoLocation2Event'}
-#EVENT {'ShiftDown': False, 'Button': 'BUTTON1', 'CtrlDown': False, 'State': 'DOWN', 'Time': 'Friday, 08/05/11 02:12:11 PM', 'Position': (59, 367), 'AltDown': False, 'Type': 'SoMouseButtonEvent'}
-#EVENT {'ShiftDown': False, 'Button': 'BUTTON1', 'CtrlDown': False, 'State': 'UP', 'Time': 'Friday, 08/05/11 02:12:20 PM', 'Position': (59, 367), 'AltDown': False, 'Type': 'SoMouseButtonEvent'}
-#EVENT {'ShiftDown': False, 'CtrlDown': False, 'State': 'DOWN', 'Key': 'c', 'Time': 'Friday, 08/05/11 02:12:23 PM', 'Position': (59, 367), 'AltDown': False, 'Type': 'SoKeyboardEvent'}
+    def getMouseClick(self,event_cb):
+        self.ev=event_cb
+        event=self.ev.getEvent()
+        self.event = event
+        if event.isButtonPressEvent(event,1):
+            try:
+                self.po = self.ev.getPickedPoint().getPath()
+                oname = self.ev.getPickedPoint().getPath().getNodeFromTail(1).objectName.getValue()
+                FreeCAD.Console.PrintMessage("picking %s\n"%oname)
+                self.obj = Gui.ActiveDocument.getObject(str(oname)).Proxy
+            except AttributeError:
+                FreeCAD.Console.PrintMessage("Not picked anything\n")
+                return
+            self.p0 = self.getPoint()
+            #FreeCAD.Console.PrintMessage("drag %s from %s\n"%(self.obj,self.p0))
+            cb = getattr(self.obj,'dragStart',self.dummycb)
+            cb(self.p0)
+        elif event.isButtonReleaseEvent(event,1):
+            FreeCAD.Console.PrintMessage("dragend %s from %s\n"%(self.obj,self.p0))
+            self.p0 = self.getPoint()
+            cb = getattr(self.obj,'dragEnd',self.dummycb)
+            cb(self.p0)
+            self.obj=None
+
+    def deactivate(self):
+        FreeCAD.Console.PrintMessage("deactivate\n")
+        self.view.removeEventCallback("SoKeyboardEvent",self.call)
+        self.view.removeEventCallbackPivy(coin.SoMouseButtonEvent.getClassTypeId(),self.callp)
+        self.view.removeEventCallbackPivy(coin.SoLocation2Event.getClassTypeId(),self.callm)
+        FreeCAD.Console.PrintMessage("removed callbacks\n")
+        self.do = False
+
+
     def observe(self,event):
-        """
-            mousedown: record position p0
-            mosemove if button is down: move all currently selected points with pcurrent-p0
-            mouseup: do finalisations if needed
-        """
         #FreeCAD.Console.PrintMessage("EVENT %s\n"%(event["Type"],))
-        #FreeCAD.Console.PrintMessage("EVENT %s\n"%(event,))
-        if event["Type"] == 'SoMouseButtonEvent' and event["Button"] == 'BUTTON1':
-            if event['State'] == 'DOWN':
-                self.do = True
-                self.mouseDown(event['Position'])
-            else:
-                self.do = False
-                self.mouseUp(event['Position'])
-            return
-        if self.do:
-            if event["Type"] == 'SoLocation2Event':
-                self.mouseMove(event['Position'])
-            
+        FreeCAD.Console.PrintMessage("EVENT %s\n"%(event,))
+        if event["Type"] == 'SoKeyboardEvent':
+            if event['Key'] == 'ESCAPE':
+                self.deactivate()
       
 
 FreeCADGui.addCommand('Add Mesh', AddMesh())

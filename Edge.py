@@ -23,7 +23,7 @@ class SMEdge(DocumentObject):
             layer.registerEdge(self)
             self.Start=start.getobj()
             self.End=end.getobj()
-            self.setcreased(crease)
+            self.setCreased(crease)
             self.createGeometry()
             
     def fromfef(self,data):
@@ -35,7 +35,29 @@ class SMEdge(DocumentObject):
         end=ship.points[int(end)]
         return SMEdge(self.Layer,startp, stopp,crease)
 
-    def setcreased(self,creased):
+    def toggleCrease(self):
+        FreeCAD.Console.PrintMessage("toggleCrease %s %s\n"%(self.Label,self.Creased))
+
+        if self.Creased == "Creased":
+            self.Creased = "Normal"
+        else:
+            self.Creased = "Creased"
+        FreeCAD.Console.PrintMessage("toggleCrease end %s %s\n"%(self.Label,self.Creased))
+        self.creaseColor()
+
+
+    def onChanged(self,prop):
+        if prop == "Creased":
+            self.creaseColor()
+            
+    def creaseColor(self):
+        creased = self.Creased
+        if (not creased) or (creased == "Normal"):
+            self.LineColor = (0.0,0.0,0.0,0.0)
+        else:
+            self.LineColor = (1.0,0.0,0.0,0.0)
+
+    def setCreased(self,creased):
         if (not creased) or (creased == "Normal"):
             self.Creased = "Normal"
         else:

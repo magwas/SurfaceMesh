@@ -49,20 +49,22 @@ class SMPoint(DocumentObject):
     def fefstr(self):
         #vertextype = 1, selected=0
         return "%s %s %s %s %s\r\n"%(self.Coordinates.x,self.Coordinates.y,self.Coordinates.z,1,0)
-    # FreeCad methods
 
     def dragStart(self,p0):
+        #FreeCAD.Console.PrintMessage("dragStart(%s, %s) %s\n"%(self,p0,self.Coordinates))
         self.p0 = p0
     def dragEnd(self,delta):
+        #FreeCAD.Console.PrintMessage("dragEnd(%s, %s) %s\n"%(self,delta,self.Coordinates))
         self.Coordinates = self.p0 + delta
         self.p0 = None
     def dragMove(self,delta):
+        #FreeCAD.Console.PrintMessage("dragMove(%s, %s) %s\n"%(self,delta,self.Coordinates))
         self.Coordinates = self.p0 + delta
         #self.onChanged("Coordinates")
         #self.mkmarker()
 
     def onChanged(self,prop,attach=False):
-        FreeCAD.Console.PrintMessage("onChanged  %s, %s, %s\n"%(self,prop,attach))
+        #FreeCAD.Console.PrintMessage("onChanged  %s, %s, %s\n"%(self,prop,attach))
 
         #FIXME workaroud for arg # problem
         op=prop
@@ -71,7 +73,7 @@ class SMPoint(DocumentObject):
 
         if prop == "Coordinates":
             c = self.Coordinates
-            self.coords.point.setValue(c.x, c.y, c.z)
+            self.setCoords(c.x, c.y, c.z)
             for e in self.Edges:
                 e.Proxy.createGeometry()
         elif prop == "Visibility":
@@ -84,6 +86,11 @@ class SMPoint(DocumentObject):
             DocumentObject.onChanged(self,op,attach)
 
     def mkmarker(self):
+        vo=getattr(self,'__vobject__',None)
+        if vo:
+            self._mkmarker()
+        
+    def _mkmarker(self):
         col = coin.SoBaseColor()
         col.rgb.setValue(self.LineColor[0],
                          self.LineColor[1],
@@ -102,12 +109,16 @@ class SMPoint(DocumentObject):
         marker.markerIndex=coin.SoMarkerSet.CIRCLE_FILLED_5_5
         self.pt.addChild(marker)
 
+    def setCoords(self,x,y,z):
+        vo=getattr(self,'ViewObject',None)
+        if vo:
+            vo.Proxy.coords.point.setValue(x, y, z)
     def show(self):
         #FreeCAD.Console.PrintMessage("showing\n")
         #FIXME this is a workaround
         self.mkmarker()
         c = self.Coordinates
-        self.coords.point.setValue(c.x, c.y, c.z)
+        self.setCoords(c.x,c.y,c.z)
         #the bug shown when this is called the second time
         self.RootNode.addChild(self.pt)
         #FreeCAD.Console.PrintMessage("showing end\n")

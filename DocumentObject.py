@@ -46,12 +46,20 @@ m = SMesh()
         
     def __setattr__(self,name,value):
         try:
-            setattr(self.__object__,name,value)
+            if getattr(self,'__object__',False):
+                #FIXME deserialisation split
+                setattr(self.__object__,name,value)
+            else:
+                setattr(self.__vobject__.Object,name,value)
             return
         except AttributeError:
             pass
         try:
-            setattr(self.__vobject__,name,value)
+            if getattr(self,'__vobject__',False):
+                #FIXME deserialisation split
+                setattr(self.__vobject__,name,value)
+            else:
+                setattr(self.__object__.ViewObject,name,value)
             return
         except AttributeError:
             pass

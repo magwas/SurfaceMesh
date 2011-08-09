@@ -186,7 +186,7 @@ class SurfaceEdit:
         return FreeCAD.ActiveDocument is not None
 
     def Activated(self): 
-        FreeCAD.Console.PrintMessage("activate\n")
+        #FreeCAD.Console.PrintMessage("activate\n")
         self.obj=None
         self.view=Gui.activeDocument().activeView()
         self.call = self.view.addEventCallback("SoKeyboardEvent",self.observe)
@@ -200,11 +200,11 @@ class SurfaceEdit:
     def getMouseMove(self,event_cb):
         if not self.obj:
             return
-        FreeCAD.Console.PrintMessage("moving\n")
+        #FreeCAD.Console.PrintMessage("moving\n")
         self.event=event_cb.getEvent()
-        self.p0 = self.getPoint()
+        delta = self.getPoint() - self.p0
         cb = getattr(self.obj,'dragMove',self.dummycb)
-        cb(self.p0)
+        cb(delta)
         
     def dummycb(self,p):
         pass
@@ -227,10 +227,10 @@ class SurfaceEdit:
             cb = getattr(self.obj,'dragStart',self.dummycb)
             cb(self.p0)
         elif event.isButtonReleaseEvent(event,1):
-            self.p0 = self.getPoint()
-            FreeCAD.Console.PrintMessage("dragend %s from %s\n"%(self.obj,self.p0))
+            delta = self.getPoint() - self.p0
+            #FreeCAD.Console.PrintMessage("dragend %s from %s\n"%(self.obj,delta))
             cb = getattr(self.obj,'dragEnd',self.dummycb)
-            cb(self.p0)
+            cb(delta)
             self.obj=None
 
     def deactivate(self):
@@ -238,7 +238,7 @@ class SurfaceEdit:
         self.view.removeEventCallback("SoKeyboardEvent",self.call)
         self.view.removeEventCallbackPivy(coin.SoMouseButtonEvent.getClassTypeId(),self.callp)
         self.view.removeEventCallbackPivy(coin.SoLocation2Event.getClassTypeId(),self.callm)
-        FreeCAD.Console.PrintMessage("removed callbacks\n")
+        #FreeCAD.Console.PrintMessage("removed callbacks\n")
         FreeCADGui.seToolbar.hide()
         self.do = False
 
@@ -251,12 +251,12 @@ class SurfaceEdit:
                 #FreeCAD.Console.PrintMessage("ob %s\n"%ob.Proxy)
                 meth = getattr(ob.Proxy,methname,None)
                 if meth:
-                    FreeCAD.Console.PrintMessage("calling %s\n"%meth)
+                    #FreeCAD.Console.PrintMessage("calling %s\n"%meth)
                     meth()
 
 
     def addProp(self):
-        FreeCAD.Console.PrintMessage("addprop %s\n"%(self,))
+        #FreeCAD.Console.PrintMessage("addprop %s\n"%(self,))
         tb = FreeCADGui.seToolbar
         name = str(tb.w1.text())
         value = str(tb.w2.text())
@@ -265,7 +265,7 @@ class SurfaceEdit:
             value=float(value)
         sel = FreeCADGui.Selection.getSelection()
         for ob in sel:
-            FreeCAD.Console.PrintMessage("addprop %s, %s\n"%(self,ob))
+            #FreeCAD.Console.PrintMessage("addprop %s, %s\n"%(self,ob))
             ob.addProperty(proptype,name,"Custom",name)
             try:
                 setattr(ob,name,value)
@@ -276,14 +276,17 @@ class SurfaceEdit:
         
     def observe(self,event):
         #FreeCAD.Console.PrintMessage("EVENT %s\n"%(event["Type"],))
-        FreeCAD.Console.PrintMessage("EVENT %s\n"%(event,))
+        #FreeCAD.Console.PrintMessage("EVENT %s\n"%(event,))
         if event["Type"] == 'SoKeyboardEvent' and event['State']=='DOWN':
             if event['Key'] == 'ESCAPE':
-                self.deactivate()
+                if event['ShiftDown']:
+                    self.deactivate()
+                else:
+                    FreeCADGui.Selection.clearSelection()
             elif event['Key'] == 'c':
                 self.callSelected('toggleCrease')
             elif event['Key'] == 'a':
-                FreeCADGui.seToolbar.showPropEntry(self.addProp)
+                    FreeCADGui.seToolbar.showPropEntry(self.addProp)
       
 
 FreeCADGui.seToolbar = SEToolbar()

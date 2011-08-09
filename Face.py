@@ -28,15 +28,15 @@ class SMFace(DocumentObject):
 
     def getOrCreateEdges(self,points):
         fp=self.Layer.Mesh.Proxy.getOrCreatePoint(points[0])
-        FreeCAD.Console.PrintMessage('p0=%s\n'%fp.Label)
+        #FreeCAD.Console.PrintMessage('p0=%s\n'%fp.Label)
         lastp=fp
         edges=[]
         for pp in points[1:]:
             p=self.Layer.Mesh.Proxy.getOrCreatePoint(pp)
-            FreeCAD.Console.PrintMessage('p =%s\n'%p.Label)
+            #FreeCAD.Console.PrintMessage('p =%s\n'%p.Label)
             edges.append(self.Layer.Mesh.Proxy.getOrCreateEdge(lastp,p,self.Layer.Label))
             lastp = p
-        FreeCAD.Console.PrintMessage('lp=%s\n'%p.Label)
+        #FreeCAD.Console.PrintMessage('lp=%s\n'%p.Label)
         edges.append(self.Layer.Mesh.Proxy.getOrCreateEdge(lastp,fp,self.Layer.Label))
         return edges
 

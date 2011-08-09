@@ -13,8 +13,6 @@ class SMPoint(DocumentObject):
     pytype = "SMPoint"
     def __init__(self,layer,vect=None):
             DocumentObject.__init__(self)
-            self.p0=None
-            self.pt=None
             FreeCAD.ActiveDocument.addObject("Part::Part2DObjectPython","Point",self,self)
             self.addProperty("App::PropertyVector","Coordinates","Base","Coordinates")
             self.addProperty("App::PropertyLinkList","Edges","Base", "Edges using this point")
@@ -23,13 +21,23 @@ class SMPoint(DocumentObject):
             layer.registerPoint(self)
             if vect is None:
                 vect=FreeCAD.Base.Vector(0,0,0)
-            self.mkmarker()
+            self.activate()
             self.Coordinates=vect
+            self.mkmarker()
             self.show()
+
+    def activate(self):
+            self.p0=None
+            self.pt=None
 
     def __setstate__(self,state):
         self.p0=None
         DocumentObject.__setstate__(self,state)
+        self.activate()
+
+    def attach(self,obj=None):
+        DocumentObject.attach(self,obj)
+        self.mkmarker()
             
     @staticmethod
     def fromfef(data):
@@ -43,29 +51,37 @@ class SMPoint(DocumentObject):
         return "%s %s %s %s %s\r\n"%(self.Coordinates.x,self.Coordinates.y,self.Coordinates.z,1,0)
     # FreeCad methods
 
-    def dragStart(self,p):
-        FreeCAD.Console.PrintMessage("%s.start(%s)\n"%(self,p))
-    def dragEnd(self,p):
-        FreeCAD.Console.PrintMessage("%s.end(%s)\n"%(self,p))
-    def dragMove(self,p):
-        FreeCAD.Console.PrintMessage("%s.move(%s)\n"%(self,p))
-        self.Coordinates = p
+    def dragStart(self,p0):
+        self.p0 = p0
+    def dragEnd(self,delta):
+        self.Coordinates = self.p0 + delta
+        self.p0 = None
+    def dragMove(self,delta):
+        self.Coordinates = self.p0 + delta
+        #self.onChanged("Coordinates")
         #self.mkmarker()
 
-    def onChanged(self,prop):
-        FreeCAD.Console.PrintMessage("onChangedo  %s, %s\n"%(self,prop))
+    def onChanged(self,prop,attach=False):
+        FreeCAD.Console.PrintMessage("onChanged  %s, %s, %s\n"%(self,prop,attach))
+
+        #FIXME workaroud for arg # problem
+        op=prop
+        if attach:
+            prop=attach
+
         if prop == "Coordinates":
             c = self.Coordinates
             self.coords.point.setValue(c.x, c.y, c.z)
             for e in self.Edges:
                 e.Proxy.createGeometry()
         elif prop == "Visibility":
+            FreeCAD.Console.PrintMessage("V= %s\n"%(self.Visibility))
             if self.Visibility:
                 self.show()
             else:
                 self.hide()
         else:
-            DocumentObject.onChanged(self,prop)
+            DocumentObject.onChanged(self,op,attach)
 
     def mkmarker(self):
         col = coin.SoBaseColor()
@@ -73,8 +89,8 @@ class SMPoint(DocumentObject):
                          self.LineColor[1],
                          self.LineColor[2])
         self.coords = coin.SoCoordinate3()
-        c = self.Coordinates
-        self.coords.point.setValue(c.x, c.y, c.z)
+        #c = self.Coordinates
+        #self.coords.point.setValue(c.x, c.y, c.z)
         self.pt = coin.SoType.fromName("SoFCSelection").createInstance()
         self.pt.documentName.setValue(FreeCAD.ActiveDocument.Name)
         oname=str(self.Label)
@@ -87,15 +103,17 @@ class SMPoint(DocumentObject):
         self.pt.addChild(marker)
 
     def show(self):
-        FreeCAD.Console.PrintMessage("showing\n")
+        #FreeCAD.Console.PrintMessage("showing\n")
         #FIXME this is a workaround
         self.mkmarker()
+        c = self.Coordinates
+        self.coords.point.setValue(c.x, c.y, c.z)
         #the bug shown when this is called the second time
         self.RootNode.addChild(self.pt)
-        FreeCAD.Console.PrintMessage("showing end\n")
+        #FreeCAD.Console.PrintMessage("showing end\n")
     def hide(self):
-        FreeCAD.Console.PrintMessage("hiding %s\n"%self)
+        #FreeCAD.Console.PrintMessage("hiding %s\n"%self)
         self.RootNode.removeChild(self.pt)
-        FreeCAD.Console.PrintMessage("hidden\n")
+        #FreeCAD.Console.PrintMessage("hidden\n")
 
 

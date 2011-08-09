@@ -74,7 +74,7 @@ class SMesh(DocumentObject):
                 pi, p2: the endpoints of the edge
                 layername: name of the layer where to put a new point. Optional. If omitted, the default layer is used.
         """
-        FreeCAD.Console.PrintMessage('search %s, %s\n'%(p1.Label,p2.Label))
+        #FreeCAD.Console.PrintMessage('search %s, %s\n'%(p1.Label,p2.Label))
         for layer in self.InList:
             layer=layer.Proxy
             if layer.pytype == "SMLayer":
@@ -82,7 +82,7 @@ class SMesh(DocumentObject):
                     edge=edge.Proxy
                     if edge.pytype == "SMEdge":
                         if edge.Start==p1 and edge.End==p2:
-                            FreeCAD.Console.PrintMessage('found  %s, %s\n'%(edge.Start.Label,edge.End.Label))
+                            #FreeCAD.Console.PrintMessage('found  %s, %s\n'%(edge.Start.Label,edge.End.Label))
                             return edge
         e=SMEdge(self.getOrCreateLayer(layername),p1,p2)
         p1.Edges += [e.getobj()]
@@ -110,7 +110,7 @@ class SMesh(DocumentObject):
         return f
         
     def claimChildren(self):
-        FreeCAD.Console.PrintMessage("claim %s\n"%(self.Object.Label))
+        #FreeCAD.Console.PrintMessage("claim %s\n"%(self.Object.Label))
         return self.InList
 
 

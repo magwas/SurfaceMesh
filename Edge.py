@@ -36,19 +36,21 @@ class SMEdge(DocumentObject):
         return SMEdge(self.Layer,startp, stopp,crease)
 
     def toggleCrease(self):
-        FreeCAD.Console.PrintMessage("toggleCrease %s %s\n"%(self.Label,self.Creased))
+        #FreeCAD.Console.PrintMessage("toggleCrease %s %s\n"%(self.Label,self.Creased))
 
         if self.Creased == "Creased":
             self.Creased = "Normal"
         else:
             self.Creased = "Creased"
-        FreeCAD.Console.PrintMessage("toggleCrease end %s %s\n"%(self.Label,self.Creased))
+        #FreeCAD.Console.PrintMessage("toggleCrease end %s %s\n"%(self.Label,self.Creased))
         self.creaseColor()
 
 
-    def onChanged(self,prop):
+    def onChanged(self,prop,attach=False):
         if prop == "Creased":
             self.creaseColor()
+        else:
+            DocumentObject.onChanged(self,prop,attach)
             
     def creaseColor(self):
         creased = self.Creased

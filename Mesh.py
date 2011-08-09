@@ -28,6 +28,18 @@ class SMesh(DocumentObject):
             FreeCAD.ActiveDocument.addObject("App::FeaturePython","Mesh",self,self)
             self.addProperty("App::PropertyLinkList","Layers","Base", "Layers")
 
+    def getEdges(self):
+        ret = []
+        for l in self.Layers:
+            ret.extend(l.Proxy.getEdges())
+        return ret
+
+    def getFaces(self):
+        ret = []
+        for l in self.Layers:
+            ret.extend(l.Proxy.getFaces())
+        return ret
+
     def getOrCreateLayer(self,name=None):
         """
             gets an existing layer, or creates it if does not exists
@@ -85,8 +97,6 @@ class SMesh(DocumentObject):
                             #FreeCAD.Console.PrintMessage('found  %s, %s\n'%(edge.Start.Label,edge.End.Label))
                             return edge
         e=SMEdge(self.getOrCreateLayer(layername),p1,p2)
-        p1.Edges += [e.getobj()]
-        p2.Edges += [e.getobj()]
         return e
 
     def getOrCreateFace(self,points,layername=None):
@@ -105,8 +115,6 @@ class SMesh(DocumentObject):
                         if face.isOnPoints(points):
                             return face
         f = SMFace(self.getOrCreateLayer(layername),points)
-        for e in f.Edges:
-            e.Faces += [f.getobj()]
         return f
         
     def claimChildren(self):

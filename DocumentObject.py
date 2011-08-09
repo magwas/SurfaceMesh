@@ -65,6 +65,19 @@ m = SMesh()
             pass
         object.__setattr__(self, name, value)
         
+    def getParentByType(self,tname):
+        for p in self.InList:
+            prox=getattr(p,'Proxy',None)
+            if prox and prox.pytype == tname:
+                return prox
+        for p in self.InList:
+            prox=getattr(p,'Proxy',None)
+            pp = prox.getParentByType(tname)
+            if pp:
+                return pp
+        return None
+            
+        
     def getobj(self):
         warnings.warn("getobj should not exist", DeprecationWarning)
         return self.__object__

@@ -17,8 +17,8 @@ class SMFace(DocumentObject):
             DocumentObject.__init__(self)
             FreeCAD.ActiveDocument.addObject("Part::Part2DObjectPython","Face",self,self)
             self.addProperty("App::PropertyLinkList","Edges","Base","End point")
-            self.addProperty("App::PropertyLink","Layer","Base", "The layer this point is in")
-            self.Layer=layer.getobj()
+            #self.addProperty("App::PropertyLink","Layer","Base", "The layer this point is in")
+            #self.Layer=layer.getobj()
             layer.registerFace(self)
             edges = self.getOrCreateEdges(points)
             if not edges:
@@ -26,18 +26,23 @@ class SMFace(DocumentObject):
             self.Edges = map(lambda x: x.getobj(), edges)
             self.createGeometry()
 
+    def getEdges(self):
+        return map(lambda x: x.Proxy, self.Edges)
+
     def getOrCreateEdges(self,points):
-        fp=self.Layer.Mesh.Proxy.getOrCreatePoint(points[0])
+        mesh = self.getParentByType('SMesh')
+        layer = self.getParentByType('SMLayer')
+        fp=mesh.getOrCreatePoint(points[0])
         #FreeCAD.Console.PrintMessage('p0=%s\n'%fp.Label)
         lastp=fp
         edges=[]
         for pp in points[1:]:
-            p=self.Layer.Mesh.Proxy.getOrCreatePoint(pp)
+            p=mesh.getOrCreatePoint(pp)
             #FreeCAD.Console.PrintMessage('p =%s\n'%p.Label)
-            edges.append(self.Layer.Mesh.Proxy.getOrCreateEdge(lastp,p,self.Layer.Label))
+            edges.append(mesh.getOrCreateEdge(lastp,p,layer.Label))
             lastp = p
         #FreeCAD.Console.PrintMessage('lp=%s\n'%p.Label)
-        edges.append(self.Layer.Mesh.Proxy.getOrCreateEdge(lastp,fp,self.Layer.Label))
+        edges.append(mesh.getOrCreateEdge(lastp,fp,layer.Label))
         return edges
 
     def getPoints(self):

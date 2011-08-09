@@ -15,10 +15,23 @@ class SMLayer(DocumentObject):
             self.addProperty("App::PropertyLinkList","Edges","Base", "Edges")
             self.addProperty("App::PropertyLinkList","Points","Base", "Points")
             self.addProperty("App::PropertyLinkList","Faces","Base", "Faces")
-            self.addProperty("App::PropertyLink","Mesh","Base", "The mesh this point is in")
-            self.Mesh=mesh.getobj()
+            self.addProperty("App::PropertyLinkList","Layers","Base", "Faces")
+            #self.addProperty("App::PropertyLink","Mesh","Base", "The mesh this point is in")
+            #self.Mesh=mesh.getobj()
             mesh.registerLayer(self)
             self.Label = name
+
+    def getEdges(self):
+        ret = map(lambda x: x.Proxy,self.Edges)
+        for l in self.Layers:
+            ret.extend(l.Proxy.getEdges())
+        return ret
+
+    def getFaces(self):
+        ret = map(lambda x: x.Proxy,self.Faces)
+        for l in self.Layers:
+            ret.extend(l.Proxy.getFaces())
+        return ret
 
     def registerPoint(self,p):
         self.Points += [p.getobj()]

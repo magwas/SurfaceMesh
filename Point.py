@@ -15,9 +15,8 @@ class SMPoint(DocumentObject):
             DocumentObject.__init__(self)
             FreeCAD.ActiveDocument.addObject("Part::Part2DObjectPython","Point",self,self)
             self.addProperty("App::PropertyVector","Coordinates","Base","Coordinates")
-            self.addProperty("App::PropertyLinkList","Edges","Base", "Edges using this point")
-            self.addProperty("App::PropertyLink","Layer","Base", "The layer this point is in")
-            self.Layer=layer.getobj()
+            #self.addProperty("App::PropertyLinkList","Edges","Base", "Edges using this point")
+            #self.addProperty("App::PropertyLink","Layer","Base", "The layer this point is in")
             layer.registerPoint(self)
             if vect is None:
                 vect=FreeCAD.Base.Vector(0,0,0)
@@ -63,6 +62,14 @@ class SMPoint(DocumentObject):
         #self.onChanged("Coordinates")
         #self.mkmarker()
 
+    def getMyEdges(self):
+        mesh = self.getParentByType('SMesh')
+        l = []
+        for e in mesh.getEdges():
+            if self in e.getPoints():
+                l.append(e)
+        return l
+
     def onChanged(self,prop,attach=False):
         #FreeCAD.Console.PrintMessage("onChanged  %s, %s, %s\n"%(self,prop,attach))
 
@@ -74,7 +81,7 @@ class SMPoint(DocumentObject):
         if prop == "Coordinates":
             c = self.Coordinates
             self.setCoords(c.x, c.y, c.z)
-            for e in self.Edges:
+            for e in self.getMyEdges():
                 e.Proxy.createGeometry()
         elif prop == "Visibility":
             FreeCAD.Console.PrintMessage("V= %s\n"%(self.Visibility))

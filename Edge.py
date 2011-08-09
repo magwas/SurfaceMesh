@@ -16,10 +16,10 @@ class SMEdge(DocumentObject):
             FreeCAD.ActiveDocument.addObject("Part::Part2DObjectPython","Edge",self,self)
             self.addProperty("App::PropertyLink","Start","Base","Start point")
             self.addProperty("App::PropertyLink","End","Base","End point")
-            self.addProperty("App::PropertyLink","Layer","Base", "The layer this point is in")
+            #self.addProperty("App::PropertyLink","Layer","Base", "The layer this point is in")
             self.addProperty("App::PropertyEnumeration","Creased","Base","Creased?").Creased=["Creased","Normal"]
-            self.addProperty("App::PropertyLinkList","Faces","Base", "Faces using this edge")
-            self.Layer=layer.getobj()
+            #self.addProperty("App::PropertyLinkList","Faces","Base", "Faces using this edge")
+            #self.Layer=layer.getobj()
             layer.registerEdge(self)
             self.Start=start.getobj()
             self.End=end.getobj()
@@ -28,9 +28,10 @@ class SMEdge(DocumentObject):
             
     def fromfef(self,data):
         #FIXME: the whole fef import stuff should be moved to Mesh
+        mesh = self.getParentByType('SMesh')
         start,end,crease,selected=data.strip().split(' ')
-        startp = self.Layer.Mesh.fefpoint(int(start))
-        stopp = self.Layer.Mesh.fefpoint(int(stop))
+        startp = mesh.fefpoint(int(start))
+        stopp = mesh.fefpoint(int(stop))
         start=ship.points[int(start)]
         end=ship.points[int(end)]
         return SMEdge(self.Layer,startp, stopp,crease)
@@ -65,13 +66,23 @@ class SMEdge(DocumentObject):
         else:
             self.Creased = "Creased"
 
+    def getPoints(self):
+        return [self.Start.Proxy,self.End.Proxy]
+
+    def getMyFaces(self):
+        mesh = self.getParentByType('SMesh')
+        l = []
+        for e in mesh.getFaces():
+            if self in e.getEdges():
+                l.append(e)
+        return l
+
     def createGeometry(self):
-        o=self
         #FreeCAD.Console.PrintMessage("Edge creategeo %s"%self.Label)
-        for e in o.Faces:
+        for e in self.getMyFaces():
             e.Proxy.createGeometry()
-        plm = o.Placement
-        #FreeCAD.Console.PrintMessage("%s,%s"%(o.Start.Coordinates,o.End.Coordinates))
-        o.Shape=Part.Line(o.Start.Coordinates,o.End.Coordinates).toShape()
-        o.Placement = plm
+        plm = self.Placement
+        #FreeCAD.Console.PrintMessage("%s,%s"%(self.Start.Coordinates,self.End.Coordinates))
+        self.Shape=Part.Line(self.Start.Coordinates,self.End.Coordinates).toShape()
+        self.Placement = plm
 

@@ -1,9 +1,9 @@
 # coding=UTF-8
 
 import FreeCAD
-from pivy import coin
+import Part
 
-from DocumentObject import DocumentObject
+from DocumentObject import DocumentObject, prtb
 
 class SMPoint(DocumentObject):
     """
@@ -22,12 +22,11 @@ class SMPoint(DocumentObject):
                 vect=FreeCAD.Base.Vector(0,0,0)
             self.activate()
             self.Coordinates=vect
-            self.mkmarker()
             self.show()
+            self.createGeometry()
 
     def activate(self):
             self.p0=None
-            self.pt=None
 
     def __setstate__(self,state):
         self.p0=None
@@ -36,7 +35,6 @@ class SMPoint(DocumentObject):
 
     def attach(self,obj=None):
         DocumentObject.attach(self,obj)
-        self.mkmarker()
             
     @staticmethod
     def fromfef(data):
@@ -70,19 +68,32 @@ class SMPoint(DocumentObject):
                 l.append(e)
         return l
 
+    def getMyFaces(self):
+        mesh = self.getParentByType('SMesh')
+        l = []
+        for e in mesh.getFaces():
+            if self in e.getPoints():
+                l.append(e)
+        return l
+
     def onChanged(self,prop,attach=False):
         #FreeCAD.Console.PrintMessage("onChanged  %s, %s, %s\n"%(self,prop,attach))
 
         #FIXME workaroud for arg # problem
+     try:
         op=prop
         if attach:
             prop=attach
 
         if prop == "Coordinates":
-            c = self.Coordinates
-            self.setCoords(c.x, c.y, c.z)
+            FreeCAD.Console.PrintMessage("self\n")
+            self.setCoords()
+            FreeCAD.Console.PrintMessage("edges\n")
             for e in self.getMyEdges():
                 e.Proxy.createGeometry()
+            FreeCAD.Console.PrintMessage("faces\n")
+            for f in self.getMyFaces():
+                f.Proxy.createGeometry()
         elif prop == "Visibility":
             FreeCAD.Console.PrintMessage("V= %s\n"%(self.Visibility))
             if self.Visibility:
@@ -91,47 +102,17 @@ class SMPoint(DocumentObject):
                 self.hide()
         else:
             DocumentObject.onChanged(self,op,attach)
+     except:
+        prtb()
 
-    def mkmarker(self):
-        vo=getattr(self,'__vobject__',None)
-        if vo:
-            self._mkmarker()
-        
-    def _mkmarker(self):
-        col = coin.SoBaseColor()
-        col.rgb.setValue(self.LineColor[0],
-                         self.LineColor[1],
-                         self.LineColor[2])
-        self.coords = coin.SoCoordinate3()
-        #c = self.Coordinates
-        #self.coords.point.setValue(c.x, c.y, c.z)
-        self.pt = coin.SoType.fromName("SoFCSelection").createInstance()
-        self.pt.documentName.setValue(FreeCAD.ActiveDocument.Name)
-        oname=str(self.Label)
-        self.pt.objectName.setValue(oname)
-        self.pt.subElementName.setValue("0")
-        self.pt.addChild(col)
-        self.pt.addChild(self.coords)
-        marker=coin.SoMarkerSet()
-        marker.markerIndex=coin.SoMarkerSet.CIRCLE_FILLED_5_5
-        self.pt.addChild(marker)
-
-    def setCoords(self,x,y,z):
+    def setCoords(self):
         vo=getattr(self,'ViewObject',None)
         if vo:
-            vo.Proxy.coords.point.setValue(x, y, z)
-    def show(self):
-        #FreeCAD.Console.PrintMessage("showing\n")
-        #FIXME this is a workaround
-        self.mkmarker()
-        c = self.Coordinates
-        self.setCoords(c.x,c.y,c.z)
-        #the bug shown when this is called the second time
-        self.RootNode.addChild(self.pt)
-        #FreeCAD.Console.PrintMessage("showing end\n")
-    def hide(self):
-        #FreeCAD.Console.PrintMessage("hiding %s\n"%self)
-        self.RootNode.removeChild(self.pt)
-        #FreeCAD.Console.PrintMessage("hidden\n")
+            self.Placement.Base=self.Coordinates
+
+    def createGeometry(self):
+        self.Shape=Part.Vertex(0,0,0)
+        self.PointSize=5
+        self.Placement.Base=self.Coordinates
 
 

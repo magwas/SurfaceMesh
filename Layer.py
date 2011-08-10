@@ -27,8 +27,20 @@ class SMLayer(DocumentObject):
             ret.extend(l.Proxy.getEdges())
         return ret
 
+    def getLayers(self):
+        ret = map(lambda x: x.Proxy,self.Layers)
+        for l in self.Layers:
+            ret.extend(l.Proxy.getLayers())
+        return ret
+
     def getFaces(self):
         ret = map(lambda x: x.Proxy,self.Faces)
+        for l in self.Layers:
+            ret.extend(l.Proxy.getFaces())
+        return ret
+
+    def getPoints(self):
+        ret = map(lambda x: x.Proxy,self.Points)
         for l in self.Layers:
             ret.extend(l.Proxy.getFaces())
         return ret

@@ -69,18 +69,8 @@ class SMEdge(DocumentObject):
     def getPoints(self):
         return [self.Start.Proxy,self.End.Proxy]
 
-    def getMyFaces(self):
-        mesh = self.getParentByType('SMesh')
-        l = []
-        for e in mesh.getFaces():
-            if self in e.getEdges():
-                l.append(e)
-        return l
-
     def createGeometry(self):
         #FreeCAD.Console.PrintMessage("Edge creategeo %s"%self.Label)
-        for e in self.getMyFaces():
-            e.Proxy.createGeometry()
         plm = self.Placement
         #FreeCAD.Console.PrintMessage("%s,%s"%(self.Start.Coordinates,self.End.Coordinates))
         self.Shape=Part.Line(self.Start.Coordinates,self.End.Coordinates).toShape()

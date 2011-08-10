@@ -109,3 +109,10 @@ m = SMesh()
     def __setstate__(self,value):
         return
 
+import sys, traceback
+
+def prtb():
+    exc_type, exc_value, exc_traceback = sys.exc_info()
+    for i in traceback.format_exception(exc_type, exc_value,exc_traceback):
+        FreeCAD.Console.PrintMessage(i)
+

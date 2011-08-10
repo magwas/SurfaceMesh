@@ -34,10 +34,22 @@ class SMesh(DocumentObject):
             ret.extend(l.Proxy.getEdges())
         return ret
 
+    def getLayers(self):
+        ret = self.Layers
+        for l in self.Layers:
+            ret.extend(l.Proxy.getLayers())
+        return ret
+
     def getFaces(self):
         ret = []
         for l in self.Layers:
             ret.extend(l.Proxy.getFaces())
+        return ret
+
+    def getPoints(self):
+        ret = []
+        for l in self.Layers:
+            ret.extend(l.Proxy.getPoints())
         return ret
 
     def getOrCreateLayer(self,name=None):
@@ -45,10 +57,22 @@ class SMesh(DocumentObject):
             gets an existing layer, or creates it if does not exists
             arguments:
                 name: name of the layer. optional. If omitted, we are looking for the default one
+App.newDocument()
+App.setActiveDocument("Unnamed")
+App.ActiveDocument=App.getDocument("Unnamed")
+Gui.ActiveDocument=Gui.getDocument("Unnamed")
+import SurfaceEditing
+mesh=SurfaceEditing.SMesh()
+mesh.getOrCreateLayer()
+mesh.__object__.Layers
+mesh.getOrCreateLayer()
+mesh.__object__.Layers
+mesh.Layers
+
         """
         if name == None:
             name = SMLayer.getDefaultName()
-        for layer in self.InList:
+        for layer in self.getLayers():
             layer=layer.Proxy
             if layer.pytype == "SMLayer":
                 if layer.Label == name:
@@ -68,15 +92,10 @@ class SMesh(DocumentObject):
                 vect: the vector representing the coordinates of the point
                 layername: name of the layer where to put a new point. Optional. If omitted, the default layer is used.
         """
-        for layer in self.InList:
-            layer=layer.Proxy
-            if layer.pytype == "SMLayer":
-                for point in layer.InList:
-                    point=point.Proxy
-                    if point.pytype == "SMPoint":
-                        if point.Coordinates == vect:
-                            #FIXME maybe some error should be allowed...
-                            return point
+        for point in self.getPoints():
+            if point.Coordinates == vect:
+                #FIXME maybe some error should be allowed...
+                return point
         return SMPoint(self.getOrCreateLayer(layername),vect)
 
     def getOrCreateEdge(self,p1,p2,layername=None):
@@ -87,15 +106,10 @@ class SMesh(DocumentObject):
                 layername: name of the layer where to put a new point. Optional. If omitted, the default layer is used.
         """
         #FreeCAD.Console.PrintMessage('search %s, %s\n'%(p1.Label,p2.Label))
-        for layer in self.InList:
-            layer=layer.Proxy
-            if layer.pytype == "SMLayer":
-                for edge in layer.InList:
-                    edge=edge.Proxy
-                    if edge.pytype == "SMEdge":
-                        if edge.Start==p1 and edge.End==p2:
-                            #FreeCAD.Console.PrintMessage('found  %s, %s\n'%(edge.Start.Label,edge.End.Label))
-                            return edge
+        for edge in self.getEdges():
+            if edge.Start==p1 and edge.End==p2:
+                #FreeCAD.Console.PrintMessage('found  %s, %s\n'%(edge.Start.Label,edge.End.Label))
+                return edge
         e=SMEdge(self.getOrCreateLayer(layername),p1,p2)
         return e
 
@@ -119,6 +133,6 @@ class SMesh(DocumentObject):
         
     def claimChildren(self):
         #FreeCAD.Console.PrintMessage("claim %s\n"%(self.Object.Label))
-        return self.InList
+        return self.Layers
 
 

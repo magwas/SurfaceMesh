@@ -8,8 +8,6 @@ from SurfaceMesh.Mesh import SMesh
 from draftGui import translate, getMainWindow, DraftDockWidget, DraftLineEdit
 
 
-from pivy import coin
-
 from PyQt4 import QtCore,QtGui,QtSvg    
 
 
@@ -181,60 +179,16 @@ class SurfaceEdit:
         self.obj=None
         self.view=Gui.activeDocument().activeView()
         self.call = self.view.addEventCallback("SoEvent",self.observe)
-        #self.callp = self.view.addEventCallbackPivy(coin.SoMouseButtonEvent.getClassTypeId(),self.getMouseClick) 
-        #self.callm = self.view.addEventCallbackPivy(coin.SoLocation2Event.getClassTypeId(),self.getMouseMove) 
         FreeCADGui.seToolbar.show()
 
     def deactivate(self):
         FreeCAD.Console.PrintMessage("deactivate\n")
         self.view.removeEventCallback("SoEvent",self.call)
-        #self.view.removeEventCallbackPivy(coin.SoMouseButtonEvent.getClassTypeId(),self.callp)
-        #self.view.removeEventCallbackPivy(coin.SoLocation2Event.getClassTypeId(),self.callm)
-        #FreeCAD.Console.PrintMessage("removed callbacks\n")
         FreeCADGui.seToolbar.hide()
         self.do = False
 
-    def getPoint(self):
-        return Gui.ActiveDocument.ActiveView.getPoint(tuple(self.event.getPosition().getValue()))
-
-    def getMouseMove(self,event_cb):
-        if not self.obj:
-            return
-        #FreeCAD.Console.PrintMessage("moving\n")
-        self.event=event_cb.getEvent()
-        delta = self.getPoint() - self.p0
-        cb = getattr(self.obj,'dragMove',self.dummycb)
-        cb(delta)
-        
     def dummycb(self,p):
         pass
-
-    def getMouseClick(self,event_cb):
-        self.ev=event_cb
-        event=self.ev.getEvent()
-        self.event = event
-        if event.isButtonPressEvent(event,1):
-            try:
-                self.po = self.ev.getPickedPoint().getPath()
-                oname = self.ev.getPickedPoint().getPath().getNodeFromTail(1).objectName.getValue()
-                FreeCAD.Console.PrintMessage("picking %s\n"%oname)
-                self.obj = Gui.ActiveDocument.getObject(str(oname)).Proxy
-            except AttributeError:
-                FreeCAD.Console.PrintMessage("Not picked anything\n")
-                return
-            self.p0 = self.getPoint()
-            #FreeCAD.Console.PrintMessage("drag %s from %s\n"%(self.obj,self.p0))
-            cb = getattr(self.obj,'dragStart',self.dummycb)
-            cb(self.p0)
-        elif event.isButtonReleaseEvent(event,1):
-            if not self.obj:
-                return
-            delta = self.getPoint() - self.p0
-            #FreeCAD.Console.PrintMessage("dragend %s from %s\n"%(self.obj,delta))
-            cb = getattr(self.obj,'dragEnd',self.dummycb)
-            cb(delta)
-            self.obj=None
-
 
     def callSelected(self,methname):
         #FreeCAD.Console.PrintMessage("cs %s\n"%methname)
@@ -283,12 +237,13 @@ class SurfaceEdit:
         elif event["Type"] == 'SoLocation2Event':
             if not self.obj:
                 return
-            FreeCAD.Console.PrintMessage("moving\n")
-            delta = self.getPoint2(event['Position']) - self.p0
+            #FreeCAD.Console.PrintMessage("moving\n")
+            delta = self.getPoint(event['Position']) - self.p0
+            #self.mesh.getOrCreatePoint(self.p0+delta,"points")
             cb = getattr(self.obj,'dragMove',self.dummycb)
             cb(delta)
         elif event["Type"] == 'SoMouseButtonEvent':
-            FreeCAD.Console.PrintMessage("EVENT %s\n"%(event,))
+            #FreeCAD.Console.PrintMessage("EVENT %s\n"%(event,))
             if event['State'] == 'DOWN':
                 pos = event['Position']
                 objs = Gui.ActiveDocument.ActiveView.getObjectsInfo(pos)
@@ -297,23 +252,27 @@ class SurfaceEdit:
                         ob=FreeCAD.ActiveDocument.getObject(obj['Object']).Proxy
                         if getattr(ob,'pytype',False) and ob.pytype == 'SMPoint':
                             self.obj=ob
-                self.p0 = self.getPoint2(pos)
-                FreeCAD.Console.PrintMessage("drag %s from %s\n"%(self.obj,self.p0))
+                self.p0 = self.getPoint(pos)
+                #self.mesh = SMesh()
+                #self.mesh.getOrCreatePoint(self.p0,"points")
+                    
+                #FreeCAD.Console.PrintMessage("drag %s from %s\n"%(self.obj,self.p0))
                 cb = getattr(self.obj,'dragStart',self.dummycb)
                 cb(self.p0)
             elif event['State'] == 'UP':
                 pos = event['Position']
                 if not self.obj:
                     return
-                delta = self.getPoint2(pos) - self.p0
-                FreeCAD.Console.PrintMessage("dragend %s from %s\n"%(self.obj,delta))
+                delta = self.getPoint(pos) - self.p0
+                #self.mesh.getOrCreatePoint(self.p0+delta,"points")
+                #FreeCAD.Console.PrintMessage("dragend %s from %s\n"%(self.obj,delta))
                 cb = getattr(self.obj,'dragEnd',self.dummycb)
                 cb(delta)
                 self.obj=None
         else:
-            FreeCAD.Console.PrintMessage("EVENT %s\n"%(event,))
+            FreeCAD.Console.PrintMessage("unhandled event %s\n"%(event,))
           
-    def getPoint2(self,pos):
+    def getPoint(self,pos):
         return Gui.ActiveDocument.ActiveView.getPoint(pos)
 
 """

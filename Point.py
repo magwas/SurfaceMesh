@@ -49,7 +49,7 @@ class SMPoint(DocumentObject):
 
     def dragStart(self,p0):
         #FreeCAD.Console.PrintMessage("dragStart(%s, %s) %s\n"%(self,p0,self.Coordinates))
-        self.p0 = p0
+        self.p0 = self.Coordinates
     def dragEnd(self,delta):
         #FreeCAD.Console.PrintMessage("dragEnd(%s, %s) %s\n"%(self,delta,self.Coordinates))
         self.Coordinates = self.p0 + delta

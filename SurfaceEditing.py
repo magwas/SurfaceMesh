@@ -309,7 +309,10 @@ class SurfaceEdit:
                 objs = Gui.ActiveDocument.ActiveView.getObjectsInfo(pos)
                 if objs:
                     for obj in objs:
-                        ob=FreeCAD.ActiveDocument.getObject(obj['Object']).Proxy
+                        try:
+                            ob=FreeCAD.ActiveDocument.getObject(obj['Object']).Proxy
+                        except AttributeError:
+                            continue
                         if getattr(ob,'pytype',False) and ob.pytype == 'SMPoint':
                             self.obj=ob
                 self.p0 = self.getPoint(pos)

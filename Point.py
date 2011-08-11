@@ -86,12 +86,9 @@ class SMPoint(DocumentObject):
             prop=attach
 
         if prop == "Coordinates":
-            FreeCAD.Console.PrintMessage("self\n")
             self.setCoords()
-            FreeCAD.Console.PrintMessage("edges\n")
             for e in self.getMyEdges():
                 e.Proxy.createGeometry()
-            FreeCAD.Console.PrintMessage("faces\n")
             for f in self.getMyFaces():
                 f.Proxy.createGeometry()
         elif prop == "Visibility":

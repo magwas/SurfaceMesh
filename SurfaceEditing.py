@@ -7,6 +7,7 @@ from SurfaceMesh.Mesh import SMesh
 
 from draftGui import translate, getMainWindow, DraftDockWidget, DraftLineEdit
 
+from DocumentObject import prtb
 
 from PyQt4 import QtCore,QtGui,QtSvg    
 
@@ -138,8 +139,8 @@ class AddMesh:
             lastp=None
             points=[]
             for p in ob.Points:
-                points.append(p)
                 sp = self.mesh.getOrCreatePoint(p,"points")
+                points.append(sp)
                 if firstp is None:
                     firstp=sp
                 if lastp is not None:
@@ -222,6 +223,57 @@ class SurfaceEdit:
         tb.reset()
         FreeCAD.ActiveDocument.recompute()
         
+    def addPoint(self,pos):
+        p=self.getPoint(pos)
+        sel = FreeCADGui.Selection.getSelection()
+        for s in sel:
+            try:
+                if s.Proxy.pytype == 'SMesh': 
+                    s.Proxy.getOrCreatePoint(self.p0)
+                    return
+                elif s.Proxy.pytype == 'SMLayer':
+                    s.Proxy.getParentByType('SMesh').getOrCreatePoint(self.p0,s.Label) 
+            except AttributeError:
+                pass
+        FreeCAD.Console.PrintMessage("You should select a Mesh or Layer to create a point in it\n")
+        
+    def getSelectedPoints(self):
+        sel = FreeCADGui.Selection.getSelection()
+        points=[]
+        mesh=None
+        for s in sel:
+            pt = False
+            try:
+                pt = (s.Proxy.pytype == 'SMPoint')
+            except AttributeError:
+                continue
+            if pt:
+                if not mesh:
+                    mesh = s.Proxy.getParentByType('SMesh')
+                elif mesh != s.Proxy.getParentByType('SMesh'):
+                    FreeCAD.Console.PrintMessage("You should select points in the same mesh to create edges/faces!\n")
+                    return mesh,[]
+                points.append(s.Proxy) 
+        return mesh,points
+
+    def addEdge(self):
+        mesh,points = self.getSelectedPoints()
+        if len(points) < 2:
+            FreeCAD.Console.PrintMessage("You should select at least 2 points in the same mesh to create edges!\n")
+            return
+
+        p0 = points[0]
+        for p in points[1:]:
+            mesh.getOrCreateEdge(p0,p)
+            p0 = p
+
+    def addFace(self):
+        mesh,points = self.getSelectedPoints()
+        if len(points) < 3:
+            FreeCAD.Console.PrintMessage("You should select at least 3 points in the same mesh to create a face!\n")
+            return
+        mesh.getOrCreateFace(points)
+
     def observe(self,event):
         #FreeCAD.Console.PrintMessage("EVENT %s\n"%(event["Type"],))
         if event["Type"] == 'SoKeyboardEvent' and event['State']=='DOWN':
@@ -234,6 +286,14 @@ class SurfaceEdit:
                 self.callSelected('toggleCrease')
             elif event['Key'] == 'a':
                     FreeCADGui.seToolbar.showPropEntry(self.addProp)
+            elif event['Key'] == 'i':
+                self.addPoint(event['Position'])
+            elif event['Key'] == 'e':
+                self.addEdge()
+            elif event['Key'] == 'f':
+                self.addFace()
+            else:
+                FreeCAD.Console.PrintMessage("unhandled keypress %s\n"%(event['Key'],))
         elif event["Type"] == 'SoLocation2Event':
             if not self.obj:
                 return

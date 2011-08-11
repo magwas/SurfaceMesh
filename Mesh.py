@@ -120,14 +120,6 @@ mesh.Layers
                 points: the points of the face
                 layername: name of the layer where to put a new point. Optional. If omitted, the default layer is used.
         """
-        for layer in self.InList:
-            layer=layer.Proxy
-            if layer.pytype == "SMLayer":
-                for face in layer.InList:
-                    face = face.Proxy
-                    if face.pytype == "SMface":
-                        if face.isOnPoints(points):
-                            return face
         f = SMFace(self.getOrCreateLayer(layername),points)
         return f
         

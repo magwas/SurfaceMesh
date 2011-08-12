@@ -46,6 +46,7 @@ class Joint(object):
         print point.Label,tp
         if tp == "supported":
             self.support = Matrix([[self.eqpart("x")],[self.eqpart("y")],[self.eqpart("z")]])
+            self.truss.supportsyms = self.truss.supportsyms.union(self.support)
             self.eq += self.support
             print "supported",point.Label,self.eq
         if tp == "load":
@@ -56,7 +57,8 @@ class Joint(object):
         return symbols("%s_%s"%(str(self.point.Label),axis),real=True, each_char=False)
 
     def matrixToVector(self,mx):
-        return FreeCAD.Base.Vector(mx[0],mx[1],mx[2])
+        """It also converts from stadard FreeCAD mm to SI m"""
+        return FreeCAD.Base.Vector(mx[0]/1000,mx[1]/1000,mx[2]/1000)
 
     def reportForce(self):
         print self.point.Label
@@ -92,6 +94,7 @@ class Truss(object):
         """
         self.beams={}
         self.joints={}
+        self.supportsyms=set()
         for e in mesh.getEdges():
             tp=getattr(e,"trusspart",None)
             if tp == "beam":
@@ -111,22 +114,42 @@ class Truss(object):
             for eq in v.eq:
                 if eq != 0:
                     self.eqs.append(eq)
+        solution = solve(self.eqs)
+        #if a support component makes the truss indeterminate, we fix that component to 0
+        missings = set()
+        for k,v in solution.items():
+            syms = v.atoms(Symbol)
+            if not syms:
+                continue
+            if syms - self.supportsyms:
+                print syms
+                print self.supportsyms
+                raise ValueError("This truss is unsolvable")
+            missings = missings.union(syms)
+        for s in missings:
+            self.eqs.append(s)
         self.solution = solve(self.eqs)
+        self.report()
+            
+
+    def report(self):
         for b in self.beams.values():
             b.reportForce()
         for j in self.joints.values():
             j.reportForce()
-        return self.solution
 
     def listeqs(self):
         for (k,v) in self.joints.items():
             print k
             print "\t%s\n\t%s\n\t%s\n"%tuple(v.eq.tolist())
+        for (k,v) in self.solution.items():
+            print k,":\t",v
+
 
 """
 import truss
 reload(truss)
-mesh=Gui.getDocument("beam").getObject("Mesh").Proxy
+mesh=Gui.getDocument("bridge").getObject("Mesh").Proxy
 t=truss.Truss(mesh)
 t.solve()
 t.listeqs()

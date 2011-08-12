@@ -45,7 +45,7 @@ class SEToolbar:
             self.w1 = self.lineedit("w1",width=100)
             self.l2 = self.label("l1","value:")
             self.w2 = self.lineedit("w2",width=100)
-            self.q1 = self.combo("q1",[("String","App::PropertyString"),("Float","App::PropertyFloat")])
+            self.q1 = self.combo("q1",[("String","App::PropertyString"),("Float","App::PropertyFloat"),("Vector","App::PropertyVector")])
             self.b1 = self.button("b1","OK")
 
             self.layout.addStretch(100)
@@ -212,6 +212,8 @@ class SurfaceEdit:
         proptype = str(tb.q1.itemData(tb.q1.currentIndex()).toString())
         if proptype == "App::PropertyFloat":
             value=float(value)
+        elif proptype == "App::PropertyVector":
+            value=FreeCAD.Base.Vector(eval(value))
         sel = FreeCADGui.Selection.getSelection()
         for ob in sel:
             #FreeCAD.Console.PrintMessage("addprop %s, %s\n"%(self,ob))

@@ -1,1 +1,79 @@
-sooo
+This is a surface mesh editing module for FreeCAD.
+It intends to work similarly to FreeShip, but take advantage of the capabilities of FreeCAD
+This package is at git@github.com:magwas/SurfaceMesh.git
+FreeCAD is at https://sourceforge.net/projects/free-cad
+FreeShip is at http://www.hydronship.net/index.php?lang=en
+
+1. What is a surface mesh?
+
+A surface mesh is defined by a control mesh, where there are:
+- Points, defining the geometry.
+- Edges, which are defined by two points. An edge can be creased or normal.
+- Faces, defined by control points. At each edge of a face there should be an ... edge.
+- Layers used to group faces together. TODO Layers define the thickness of the surface.
+- A mesh contains a set of layers. Its main points are that:
+ a) when new parts are incorporated to the mesh, existing points, edges and faces in the mesh are reused
+ b) TODO this comprises a unit which exports the complex shape of the mesh for use by other modules
+ c) TODO this unit holds the editing history which is used to recreate the mesh should an underlying part have changed
+The faces together define subdivision surfaces. The subdivision surface geometry is controlled by the control points and the creasedness of edges, as described in the followig paper:
+"Quad/triangle subdivision" by J. Stam & C. Loop http://research.microsoft.com/~cloop/qtEG.pdf
+
+Every point, edge, face, layer and mesh can have user defined attributes which can be used as parameters for calculations, etc.
+See the truss calculator as an example using this.
+
+2. How a surface mesh can be built and edited?
+
+FIXME: only point move should be left in surface editing mode
+2.1 Adding elements:
+
+A surface mesh can be built by incorporating various other parts into a mesh. These are currently the following:
+- Line
+    Lines define two points and an edge
+- Wire
+    Wires define the points and edges in the wire. If the wire is closed, then it also defines a face
+
+TODO: rest of the 2d editing elements, sketch, other parts
+You can create a mesh by selecting the elements you want to incorporate in it, ad pressing the "Add Mesh" button.
+TODO: incorporate elements to an existing mesh
+
+The elements of the mesh can also be added by hand:
+- A point can be added in Surface Editing mode by selecting the mesh or one of its layers, clicking on the drawing and pressing the button "i". The point will be created on the focal plane. 
+- Edges can be added in Surface Editing mode by selecting at least two points and pressing "e". 
+- A face can be added in Surface editing mode by selecting at least three faces and pressing "f".
+TODO: add layers
+
+2.2 Deleting elements
+You can delete a point,edge,face,layer or mesh by selecting it and pressing the Del button.
+FIXME: Layer and mesh deletion should ask for confirmation and delete everything under it.
+
+2.3 Editing
+
+You can move around points in Surface Editing mode by simply dragging them. The points are always moving paralell to the focal plane.
+You can enter Surface Editing Mode by pressing the "Surface Editing" button, and leave the mode by pressing shift-escape
+
+By pressing "c" in Surface Editing mode, you can toggle the creasedness of the selected edges.
+By pressing "a" in surface Editing mode, you can add/edit custom properties of the selected items. You should give a name and value for the selected property, select its type (String, Float or Vector), and press "OK". The value for vectors should be given as a python tuple, like (1.41,2.71,3.1415).
+
+TODO:
+- extrude
+- intersect plane
+- import/export fef
+- create shape for the mesh/faces
+
+3. Editing history
+
+This whole section is TODO
+
+The editing history is kept as a property of the mesh, and the whole mesh can be recreated from it.
+It contains history items represetable by a tuple (operation,sources,changed,new,attributes) where
+- operation is the name of the operation, like "incorporateLine", "movePoint", etc
+- sources is a list of the names of objects which the operation uses as input
+- changed is a list of the names of objects which have been changed by the operation
+- new is a list of the names of objects newly created by the operation
+- attributes is a dictionary of the extra attributes (like coordinates of a new point)
+
+All of the objects are referenced by names, and extra attributes should be simple types such that eval("%s"%attributes) == attributes, and this have no side effects.
+This way the history can be easily serialised, shown and edited.
+A history compacting method should be also available, which merges history items. E.g. two movePoint operations can be merged if there was no operation between them which have used the moved point.
+A replay method should also be available, which can replay the history if the properties of an input object or parameters of an operation have been changed.
+

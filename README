@@ -23,7 +23,6 @@ See the truss calculator as an example using this.
 
 2. How a surface mesh can be built and edited?
 
-FIXME: only point move should be left in surface editing mode
 2.1 Adding elements:
 
 A surface mesh can be built by incorporating various other parts into a mesh. These are currently the following:
@@ -33,13 +32,13 @@ A surface mesh can be built by incorporating various other parts into a mesh. Th
     Wires define the points and edges in the wire. If the wire is closed, then it also defines a face
 
 TODO: rest of the 2d editing elements, sketch, other parts
-You can create a mesh by selecting the elements you want to incorporate in it, ad pressing the "Add Mesh" button.
+You can create a mesh by selecting the elements you want to incorporate in it, and pressing the "Add Mesh" button.
 TODO: incorporate elements to an existing mesh
 
 The elements of the mesh can also be added by hand:
-- A point can be added in Surface Editing mode by selecting the mesh or one of its layers, clicking on the drawing and pressing the button "i". The point will be created on the focal plane. 
-- Edges can be added in Surface Editing mode by selecting at least two points and pressing "e". 
-- A face can be added in Surface editing mode by selecting at least three faces and pressing "f".
+- A point can be added by selecting the mesh or one of its layers, clicking on "Insert points" and clicking on the drawing. The point will be created on the focal plane. When you are done, press escape.
+- Edges can be added by selecting at least two points and clicking on "Add Edge". 
+- A face can be added by selecting at least three faces and clicking on "Add Face".
 TODO: add layers
 
 2.2 Deleting elements
@@ -48,14 +47,15 @@ FIXME: Layer and mesh deletion should ask for confirmation and delete everything
 
 2.3 Editing
 
-You can move around points in Surface Editing mode by simply dragging them. The points are always moving paralell to the focal plane.
-You can enter Surface Editing Mode by pressing the "Surface Editing" button, and leave the mode by pressing shift-escape
+You can move around points after clicking on "Move Points" by simply dragging them. The points are always moving paralell to the focal plane. Whe you are done, press escape.
 
-By pressing "c" in Surface Editing mode, you can toggle the creasedness of the selected edges.
-By pressing "a" in surface Editing mode, you can add/edit custom properties of the selected items. You should give a name and value for the selected property, select its type (String, Float or Vector), and press "OK". The value for vectors should be given as a python tuple, like (1.41,2.71,3.1415).
+You can toggle the creasedness of the selected edges by clicking on "Toggle Crease".
+You can add/edit custom properties of the selected items by clicking Add/Edit property". You should give a name and value for the selected property, select its type (String, Float or Vector), and press "OK". The value for vectors should be given as a python tuple, like (1.41,2.71,3.1415).
 
 TODO:
 - extrude
+- scale
+- rotate
 - intersect plane
 - import/export fef
 - create shape for the mesh/faces

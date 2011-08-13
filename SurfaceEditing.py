@@ -50,11 +50,13 @@ class SEToolbar:
 
             self.layout.addStretch(100)
 
-    def show(self):
+    def show(self,text=None):
         self.l1.show()
         self.lcommand.show()
         self.baseWidget.show()
         self.seWidget.setVisible(True)
+        if text:
+            self.lcommand.setText(text)
 
     def hide(self):
         self.seWidget.setVisible(False)
@@ -64,6 +66,7 @@ class SEToolbar:
         """
         Shows the widgets for property entry
         """
+        self.show()
         self.lcommand.setText("Add Property")
         self.w1.show()
         self.l2.show()
@@ -119,6 +122,56 @@ class SEToolbar:
         self.layout.addWidget(lineedit)
         return lineedit
         
+class ToggleCrease:
+    def Activated(self):
+        FreeCADGui.seEditor.callSelected('toggleCrease')
+
+    def GetResources(self): 
+       return {'Pixmap' : '', 'MenuText': 'Toggle Crease', 'ToolTip': 'Toggles creasedbess of selected edges'} 
+
+    def IsActive(self):
+        return FreeCAD.ActiveDocument is not None
+
+class AddProp:
+    def Activated(self):
+        FreeCADGui.seToolbar.showPropEntry(FreeCADGui.seEditor.addProp)
+
+    def GetResources(self): 
+       return {'Pixmap' : '', 'MenuText': 'Add/Edit property', 'ToolTip': 'Adds/edits user defined property of selected objects'} 
+
+    def IsActive(self):
+        return FreeCAD.ActiveDocument is not None
+
+class AddEdge:
+    def Activated(self):
+        FreeCADGui.seEditor.addEdge()
+
+    def GetResources(self): 
+       return {'Pixmap' : '', 'MenuText': 'Add Edge', 'ToolTip': 'Adds edge between selected points'} 
+
+    def IsActive(self):
+        return FreeCAD.ActiveDocument is not None
+
+class AddFace:
+    def Activated(self):
+        FreeCADGui.seEditor.addFace()
+
+    def GetResources(self): 
+       return {'Pixmap' : '', 'MenuText': 'Add Face', 'ToolTip': 'Adds face with selected points'} 
+
+    def IsActive(self):
+        return FreeCAD.ActiveDocument is not None
+
+class ClearSelection:
+    def Activated(self):
+        FreeCADGui.Selection.clearSelection()
+
+    def GetResources(self): 
+       return {'Pixmap' : '', 'MenuText': 'Clear Selection', 'ToolTip': 'Clears the selection'} 
+
+    def IsActive(self):
+        return FreeCAD.ActiveDocument is not None
+
 class AddMesh: 
     def Activated(self): 
         FreeCAD.ActiveDocument.openTransaction("Adding Mesh\n")
@@ -164,23 +217,46 @@ class AddMesh:
     def IsActive(self):
         return FreeCAD.ActiveDocument is not None
 
+class MovePoints:
+    def Activated(self):
+        FreeCADGui.seEditor.activateMover()
+
+    def GetResources(self): 
+       return {'Pixmap' : '', 'MenuText': 'Move Points', 'ToolTip': 'Moves points around'} 
+
+    def IsActive(self):
+        return FreeCAD.ActiveDocument is not None
+
+class InsertPoints:
+    def Activated(self):
+        FreeCADGui.seEditor.activateInserter()
+
+    def GetResources(self): 
+       return {'Pixmap' : '', 'MenuText': 'Insert Points', 'ToolTip': 'Inserts points'} 
+
+    def IsActive(self):
+        return FreeCAD.ActiveDocument is not None
+
+
 class SurfaceEdit:
     def __init__(self):
         self.obj=None
         QtCore.QObject.connect(FreeCADGui.seToolbar.b1,QtCore.SIGNAL("pressed()"),self.addProp)
 
-    def GetResources(self): 
-       return {'Pixmap' : '', 'MenuText': 'Surface Editing', 'ToolTip': 'Turns on/off the surface editing mode'} 
+    def activateMover(self):
+        self.mode='Move Points'
+        self.activated()
 
-    def IsActive(self):
-        return FreeCAD.ActiveDocument is not None
+    def activateInserter(self):
+        self.mode='Insert Points'
+        self.activated()
 
-    def Activated(self): 
+    def activated(self): 
         #FreeCAD.Console.PrintMessage("activate\n")
         self.obj=None
         self.view=Gui.activeDocument().activeView()
         self.call = self.view.addEventCallback("SoEvent",self.observe)
-        FreeCADGui.seToolbar.show()
+        FreeCADGui.seToolbar.show(self.mode)
 
     def deactivate(self):
         FreeCAD.Console.PrintMessage("deactivate\n")
@@ -222,21 +298,27 @@ class SurfaceEdit:
                 setattr(ob,name,value)
             except TypeError:
                 FreeCAD.Console.PrintMessage("invalid type for %s.%s: %s\n"%(ob.Label,name,proptype))
-        tb.reset()
+        tb.hide()
         FreeCAD.ActiveDocument.recompute()
         
     def addPoint(self,pos):
         p=self.getPoint(pos)
         sel = FreeCADGui.Selection.getSelection()
+        FreeCAD.Console.PrintMessage("sel= %s\n"%(sel))
+        FreeCAD.Console.PrintMessage("sel= %s\n"%(map(lambda x: x.Proxy,sel)))
+        FreeCAD.Console.PrintMessage("sel= %s\n"%(map(lambda x: x.Proxy.pytype,sel)))
+        FreeCAD.Console.PrintMessage("sel= %s\n"%(map(lambda x: x.Proxy.pytype.__class__,sel)))
         for s in sel:
-            try:
-                if s.Proxy.pytype == 'SMesh': 
-                    s.Proxy.getOrCreatePoint(self.p0)
-                    return
-                elif s.Proxy.pytype == 'SMLayer':
-                    s.Proxy.getParentByType('SMesh').getOrCreatePoint(self.p0,s.Label) 
-            except AttributeError:
-                pass
+            FreeCAD.Console.PrintMessage("s= %s\n"%(s))
+            #try:
+            if s.Proxy.pytype == 'SMesh': 
+                s.Proxy.getOrCreatePoint(p)
+                return
+            elif s.Proxy.pytype == 'SMLayer':
+                s.Proxy.getParentByType('SMesh').getOrCreatePoint(p,s.Label) 
+                return
+            #except AttributeError:
+            #    pass
         FreeCAD.Console.PrintMessage("You should select a Mesh or Layer to create a point in it\n")
         
     def getSelectedPoints(self):
@@ -280,20 +362,7 @@ class SurfaceEdit:
         #FreeCAD.Console.PrintMessage("EVENT %s\n"%(event["Type"],))
         if event["Type"] == 'SoKeyboardEvent' and event['State']=='DOWN':
             if event['Key'] == 'ESCAPE':
-                if event['ShiftDown']:
-                    self.deactivate()
-                else:
-                    FreeCADGui.Selection.clearSelection()
-            elif event['Key'] == 'c':
-                self.callSelected('toggleCrease')
-            elif event['Key'] == 'a':
-                    FreeCADGui.seToolbar.showPropEntry(self.addProp)
-            elif event['Key'] == 'i':
-                self.addPoint(event['Position'])
-            elif event['Key'] == 'e':
-                self.addEdge()
-            elif event['Key'] == 'f':
-                self.addFace()
+                self.deactivate()
             else:
                 FreeCAD.Console.PrintMessage("unhandled keypress %s\n"%(event['Key'],))
         elif event["Type"] == 'SoLocation2Event':
@@ -305,9 +374,13 @@ class SurfaceEdit:
             cb = getattr(self.obj,'dragMove',self.dummycb)
             cb(delta)
         elif event["Type"] == 'SoMouseButtonEvent':
-            #FreeCAD.Console.PrintMessage("EVENT %s\n"%(event,))
+            FreeCAD.Console.PrintMessage("EVENT %s\n"%(event,))
             if event['State'] == 'DOWN':
                 pos = event['Position']
+                if self.mode == 'Insert Points':
+                    FreeCAD.Console.PrintMessage("inserting at %s\n"%(pos,))
+                    self.addPoint(pos)
+                    return
                 objs = Gui.ActiveDocument.ActiveView.getObjectsInfo(pos)
                 if objs:
                     for obj in objs:
@@ -334,8 +407,8 @@ class SurfaceEdit:
                 cb = getattr(self.obj,'dragEnd',self.dummycb)
                 cb(delta)
                 self.obj=None
-        else:
-            FreeCAD.Console.PrintMessage("unhandled event %s\n"%(event,))
+        #else:
+        #    FreeCAD.Console.PrintMessage("unhandled event %s\n"%(event,))
           
     def getPoint(self,pos):
         return Gui.ActiveDocument.ActiveView.getPoint(pos)
@@ -351,5 +424,13 @@ se.Activated()
 """
 
 FreeCADGui.seToolbar = SEToolbar()
+FreeCADGui.seEditor = SurfaceEdit()
 FreeCADGui.addCommand('Add Mesh', AddMesh())
-FreeCADGui.addCommand('SurfaceEdit', SurfaceEdit())
+FreeCADGui.addCommand('Insert Points', InsertPoints())
+FreeCADGui.addCommand('Move Points', MovePoints())
+FreeCADGui.addCommand('Toggle Crease', ToggleCrease())
+FreeCADGui.addCommand('Add Property', AddProp())
+FreeCADGui.addCommand('Add Edge', AddEdge())
+FreeCADGui.addCommand('Add Face', AddFace())
+FreeCADGui.addCommand('Clear Selection', ClearSelection())
+

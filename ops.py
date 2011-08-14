@@ -95,6 +95,20 @@ class Operation(object):
     def __repr__(self):
         return "Operation(%s,%s,%s)"%(self.op, self.sources, self.attributes)
 
+class ToggleCrease:
+    def play_ToggleCrease(self,sources,**attributes):
+        for obj in sources:
+            ob = FreeCAD.ActiveDocument.getObject(obj)
+            ob.Proxy.toggleCrease()
+        return (list(sources),list())
+    def replay_ToggleCrease(self,sources,**attributes):
+        for obj in sources:
+            ob = FreeCAD.ActiveDocument.getObject(obj)
+            ob.Proxy.toggleCrease()
+        return (list(sources),list(),list())
+
+Operation.registerOp(ToggleCrease)
+
 class AddOb:
     def replay_AddOb(self,sources,**attributes):
         """
@@ -126,6 +140,8 @@ class AddOb:
                 e = edges[0]
                 edges.remove(e)
             else:
+                if len(se.Vertexes)<2:
+                    continue
                 sp1 = self.parent.getOrCreatePoint(se.Vertexes[0].Point,"points")
                 sp2 = self.parent.getOrCreatePoint(se.Vertexes[1].Point,"points")
                 e=self.parent.getOrCreateEdge(sp1,sp2,"edges")
@@ -136,6 +152,8 @@ class AddOb:
                 f = faces[0]
                 faces.remove(f)
             else:
+                if len(sf.Vertexes)<3:
+                    continue
                 fps=[]
                 for p in sf.Vertexes:
                     fps.append(self.parent.getOrCreatePoint(p.Point,"points"))

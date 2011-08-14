@@ -124,7 +124,16 @@ class SEToolbar:
         
 class ToggleCrease:
     def Activated(self):
-        FreeCADGui.seEditor.callSelected('toggleCrease')
+        sel = FreeCADGui.Selection.getSelection()
+        for obj in sel:
+            try:
+                pt = obj.Proxy.pytype
+            except AttributeError:
+                continue
+            if pt != 'SMEdge':
+                continue
+            mesh = obj.Proxy.getParentByType('SMesh')
+            mesh.doop('ToggleCrease', [obj.Label])
 
     def GetResources(self): 
        return {'Pixmap' : '', 'MenuText': 'Toggle Crease', 'ToolTip': 'Toggles creasedbess of selected edges'} 
@@ -394,8 +403,9 @@ class SurfaceEdit:
                             continue
                         if getattr(ob,'pytype',False) and ob.pytype == 'SMPoint':
                             self.obj=ob
-                self.p0 = self.getPoint(pos)
-                self.op0 = self.obj.Coordinates
+                if self.obj:
+                    self.p0 = self.getPoint(pos)
+                    self.op0 = self.obj.Coordinates
             elif event['State'] == 'UP':
                 pos = event['Position']
                 if not self.obj:

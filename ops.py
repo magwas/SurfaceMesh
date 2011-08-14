@@ -38,7 +38,9 @@ class History(object):
         later in the history should be redone, some operations may become invalid, and some
         objects may cease to exist.
         """
-        FreeCAD.Console.PrintMessage("redo %s, %s, %s"%(op,sources,attributes))
+        #FreeCAD.Console.PrintMessage("redo %s, %s, %s\n"%(op,sources,attributes))
+        if not op in self.history:
+            return
         histindex = self.history.index(op)
         (changed,deleted,invalid) = op.replay(sources,attributes)
         removedops=list()
@@ -141,11 +143,14 @@ class AddOb:
                 f.addBirth(self)
             nfaces.append(f)
                 
+        npoints = map(lambda x: x.Label,npoints)
+        nedges = map(lambda x: x.Label,nedges)
+        nfaces = map(lambda x: x.Label,nfaces)
         changed = nedges+npoints+nfaces
         deleted = points+edges+faces
-        self.attributes['points'] = map(lambda x: x.Label,npoints)
-        self.attributes['edges'] = map(lambda x: x.Label,nedges)
-        self.attributes['faces'] = map(lambda x: x.Label,nfaces)
+        self.attributes['points'] = npoints
+        self.attributes['edges'] = nedges
+        self.attributes['faces'] = nfaces
         return (changed,deleted,list())
 
     def play_AddOb(self,sources):
@@ -179,9 +184,12 @@ class AddOb:
             f=self.parent.getOrCreateFace(fps,"faces")
             f.addBirth(self)
             nfaces.append(f)
-        self.attributes['points'] = map(lambda x: x.Label,npoints)
-        self.attributes['edges'] = map(lambda x: x.Label,nedges)
-        self.attributes['faces'] = map(lambda x: x.Label,nfaces)
+        npoints = map(lambda x: x.Label,npoints)
+        nedges = map(lambda x: x.Label,nedges)
+        nfaces = map(lambda x: x.Label,nfaces)
+        self.attributes['points'] = npoints
+        self.attributes['edges'] = nedges
+        self.attributes['faces'] = nfaces
         return ([],npoints+nedges+nfaces)
 
 Operation.registerOp(AddOb)
@@ -230,8 +238,8 @@ class MovePoint:
                 p.Coordinates = v
         self.attributes['relative'] = relative
         self.attributes['x'] = x
-        self.attributes['x'] = y
-        self.attributes['x'] = z
+        self.attributes['y'] = y
+        self.attributes['z'] = z
         return (list(self.sources),list(),list())
 
 Operation.registerOp(MovePoint)

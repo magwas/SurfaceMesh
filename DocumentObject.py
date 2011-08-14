@@ -102,6 +102,13 @@ m = SMesh()
         return
 
     def execute(self):
+        FreeCAD.Console.PrintMessage("execute %s\n"%(self))
+        try:
+            mesh = self.getParentByType('SMesh')
+            for op in self.birth:
+                mesh.redoop(op,op.sources)
+        except:
+            prtb()
         return
 
     def __getstate__(self):

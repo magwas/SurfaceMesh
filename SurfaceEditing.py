@@ -310,15 +310,20 @@ class SurfaceEdit:
         FreeCAD.Console.PrintMessage("sel= %s\n"%(map(lambda x: x.Proxy.pytype.__class__,sel)))
         for s in sel:
             FreeCAD.Console.PrintMessage("s= %s\n"%(s))
-            #try:
+            try:
+                pt = s.Proxy.pytype
+            except AttributeError:
+                pt = None
             if s.Proxy.pytype == 'SMesh': 
-                s.Proxy.getOrCreatePoint(p)
+                mesh = s.Proxy
+                layername = str(mesh.getOrCreateLayer().Label)
+                mesh.doop("AddPoint",[],layer=layername,x=p.x,y=p.y,z=p.z)
                 return
             elif s.Proxy.pytype == 'SMLayer':
-                s.Proxy.getParentByType('SMesh').getOrCreatePoint(p,s.Label) 
+                mesh = s.Proxy.getParentByType('SMesh')
+                layername = str(s.Label)
+                mesh.doop("AddPoint",list(),layer=layername,x=p.x,y=p.y,z=p.z)
                 return
-            #except AttributeError:
-            #    pass
         FreeCAD.Console.PrintMessage("You should select a Mesh or Layer to create a point in it\n")
         
     def getSelectedPoints(self):
@@ -328,16 +333,25 @@ class SurfaceEdit:
         for s in sel:
             pt = False
             try:
-                pt = (s.Proxy.pytype == 'SMPoint')
+                pt = s.Proxy.pytype
             except AttributeError:
                 continue
-            if pt:
+            if pt == 'SMPoint':
                 if not mesh:
                     mesh = s.Proxy.getParentByType('SMesh')
                 elif mesh != s.Proxy.getParentByType('SMesh'):
                     FreeCAD.Console.PrintMessage("You should select points in the same mesh to create edges/faces!\n")
                     return mesh,[]
                 points.append(s.Proxy) 
+            elif pt == 'SMEdge':
+                if not mesh:
+                    mesh = s.Proxy.getParentByType('SMesh')
+                elif mesh != s.Proxy.getParentByType('SMesh'):
+                    FreeCAD.Console.PrintMessage("You should select points in the same mesh to create edges/faces!\n")
+                    return mesh,[]
+                points.append(s.Start.Proxy)
+                points.append(s.End.Proxy)
+                
         return mesh,points
 
     def addEdge(self):
@@ -370,9 +384,7 @@ class SurfaceEdit:
                 return
             #FreeCAD.Console.PrintMessage("moving\n")
             delta = self.getPoint(event['Position']) - self.p0
-            #self.mesh.getOrCreatePoint(self.p0+delta,"points")
-            cb = getattr(self.obj,'dragMove',self.dummycb)
-            cb(delta)
+            self.obj.Coordinates = self.op0 + delta
         elif event["Type"] == 'SoMouseButtonEvent':
             FreeCAD.Console.PrintMessage("EVENT %s\n"%(event,))
             if event['State'] == 'DOWN':
@@ -391,21 +403,15 @@ class SurfaceEdit:
                         if getattr(ob,'pytype',False) and ob.pytype == 'SMPoint':
                             self.obj=ob
                 self.p0 = self.getPoint(pos)
-                #self.mesh = SMesh()
-                #self.mesh.getOrCreatePoint(self.p0,"points")
-                    
-                #FreeCAD.Console.PrintMessage("drag %s from %s\n"%(self.obj,self.p0))
-                cb = getattr(self.obj,'dragStart',self.dummycb)
-                cb(self.p0)
+                self.op0 = self.obj.Coordinates
             elif event['State'] == 'UP':
                 pos = event['Position']
                 if not self.obj:
                     return
                 delta = self.getPoint(pos) - self.p0
-                #self.mesh.getOrCreatePoint(self.p0+delta,"points")
-                #FreeCAD.Console.PrintMessage("dragend %s from %s\n"%(self.obj,delta))
-                cb = getattr(self.obj,'dragEnd',self.dummycb)
-                cb(delta)
+                mesh = self.obj.getParentByType('SMesh')
+                self.obj.Coordinates = self.op0
+                mesh.doop('MovePoint',[str(self.obj.Label)],relative=True,x=delta.x,y=delta.y,z=delta.z)
                 self.obj=None
         #else:
         #    FreeCAD.Console.PrintMessage("unhandled event %s\n"%(event,))

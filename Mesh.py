@@ -2,6 +2,7 @@
 
 import FreeCAD
 from DocumentObject import DocumentObject
+from ops import History
 
 from Layer import SMLayer
 from Point import SMPoint
@@ -20,11 +21,12 @@ mesh.__object__.Layers
 mesh.Layers
 """
 
-class SMesh(DocumentObject):
+class SMesh(DocumentObject,History):
     """ A surface mesh """
     pytype = "SMesh"
     def __init__(self):
             DocumentObject.__init__(self)
+            History.__init__(self)
             FreeCAD.ActiveDocument.addObject("App::FeaturePython","Mesh",self,self)
             self.addProperty("App::PropertyLinkList","Layers","Base", "Layers")
 

@@ -33,20 +33,17 @@ class History(object):
         so we redo it. Take care of the consequences of the change: some of the operations
         later in the history should be redone, some operations may become invalid, and some
         objects may cease to exist.
-mesh=Gui.getDocument("Unnamed").getObject("Mesh").Proxy
-h1=mesh.history[0]
-mesh.redoop(h1,[],layer='Default Layer',x=0,y=0,z=0)
         """
-        print "redo ",op,", ",sources,", ",attributes
+        FreeCAD.Console.PrintMessage("redo %s, %s, %s"%(op,sources,attributes))
         histindex = self.history.index(op)
         (changed,deleted,invalid) = op.replay(sources,attributes)
         removedops=list()
         for o in self.history[histindex+1:]:
-            if (deleted+invalid).intersection(set(o.sources)):
+            if (set(deleted).union(set(invalid))).intersection(set(o.sources)):
                 #operation is no longer valid
                 invalid = invalid + op.changed + op.new
                 removedops.append(op)
-            elif changed.intersection(set(o.sources)):
+            elif set(changed).intersection(set(o.sources)):
                 (c2,d2,i2) = o.replay(o.sources,o.attributes)
                 changed = changed + c2
                 deleted = deleted + d2
@@ -94,14 +91,12 @@ class Operation(object):
 
 class AddPoint:
     def play_AddPoint(self,sources,layer=None,x=0,y=0,z=0):
-        print "play ",self,sources,(x,y,z)
         v = FreeCAD.Base.Vector(x,y,z)
         layerobj = self.parent.getOrCreateLayer(layer)
         p=SMPoint(layerobj,v)
         return list(),[p.Label]
 
     def replay_AddPoint(self,sources,layer=None,x=0,y=0,z=0):
-        print "replay ",self,sources,(x,y,z)
         v = FreeCAD.Base.Vector(x,y,z)
         p = FreeCAD.ActiveDocument.getObject(self.new[0])
         if p:
@@ -117,7 +112,10 @@ Operation.registerOp(AddPoint)
 
 class MovePoint:
     def play_MovePoint(self,sources,relative=False,x=0,y=0,z=0):
-        for p in sources:
+        FreeCAD.Console.PrintMessage("play_Movepoint(%s)\n"%(sources,))
+        for pn in sources:
+            print pn
+            p = FreeCAD.ActiveDocument.getObject(pn)
             v = FreeCAD.Base.Vector(x,y,z)
             if relative:
                 p.Coordinates += v
@@ -126,13 +124,13 @@ class MovePoint:
         return(list(self.sources),list())
 
     def replay_MovePoint(self,sources,relative=False,x=0,y=0,z=0):
-        """
-            For replay we should move with the difference between the original vector and the vector we received
-        """
-        self.play_MovePoint(sources,relative,
-            x-self.attributes['x'],
-            y-self.attributes['y'],
-            z-self.attributes['z'])
+        for pn in sources:
+            p = FreeCAD.ActiveDocument.getObject(pn)
+            v = FreeCAD.Base.Vector(x,y,z)
+            if relative:
+                p.Coordinates += v 
+            else:
+                p.Coordinates = v
         self.attributes['relative'] = relative
         self.attributes['x'] = x
         self.attributes['x'] = y
@@ -141,3 +139,32 @@ class MovePoint:
 
 Operation.registerOp(MovePoint)
 
+def test():
+    """
+import ops
+reload(ops)
+ops.test()
+    """
+    FreeCAD.newDocument()
+    FreeCAD.setActiveDocument("Unnamed")
+    FreeCAD.ActiveDocument=FreeCAD.getDocument("Unnamed")
+    FreeCAD.Gui.ActiveDocument=FreeCAD.Gui.getDocument("Unnamed")
+    #wb=FreeCAD.Gui.getWorkbench('SurfaceEditingWorkbench')
+    import SurfaceEditing
+    am=SurfaceEditing.AddMesh()
+    am.Activated()
+    mesh=FreeCAD.Gui.getDocument("Unnamed").getObject("Mesh").Proxy
+    FreeCAD.Gui.Selection.addSelection(mesh.Object)
+    FreeCAD.Gui.seEditor.addPoint((400,400))
+    FreeCAD.Gui.seEditor.addPoint((410,410))
+    FreeCAD.Gui.seEditor.addPoint((415,415))
+    p=FreeCAD.ActiveDocument.getObject('Point')
+    print p.Coordinates
+    mesh.doop('MovePoint',["Point"],relative=True,x=-0.5,y=-0.5,z=10)
+    print p.Coordinates
+    FreeCAD.Gui.SendMsgToActiveView("ViewFit")
+    h1=mesh.history[0]
+    mesh.redoop(h1,[],layer='Default Layer',x=0.3,y=0,z=0)
+    print p.Coordinates
+    FreeCAD.Gui.SendMsgToActiveView("ViewFit")
+    

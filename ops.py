@@ -109,6 +109,31 @@ class ToggleCrease:
 
 Operation.registerOp(ToggleCrease)
 
+class AddProperty:
+    def play_AddProperty(self,sources,name=None,proptype=None,value=None):
+        self._play_AddProperty(sources,name,proptype,value)
+        return (list(sources),list())
+    def replay_AddProperty(self,sources,name=None,proptype=None,value=None):
+        self._play_AddProperty(sources,name,proptype,value)
+        return (list(sources),list(),list())
+
+    def _play_AddProperty(self,sources,name=None,proptype=None,value=None):
+        if proptype == "App::PropertyFloat":
+            value=float(value)
+        elif proptype == "App::PropertyVector":
+            value=FreeCAD.Base.Vector(eval(value))
+
+        for obj in sources:
+            ob = FreeCAD.ActiveDocument.getObject(obj)
+            if not getattr(ob,name,None):
+                ob.addProperty(proptype,name,"Custom",name)
+            try:
+                setattr(ob,name,value)
+            except TypeError:
+                FreeCAD.Console.PrintMessage("invalid type for %s.%s: %s\n"%(ob.Label,name,proptype))
+
+Operation.registerOp(AddProperty)
+
 class AddOb:
     def replay_AddOb(self,sources,**attributes):
         """

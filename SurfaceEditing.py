@@ -291,18 +291,11 @@ class SurfaceEdit:
         name = str(tb.w1.text())
         value = str(tb.w2.text())
         proptype = str(tb.q1.itemData(tb.q1.currentIndex()).toString())
-        if proptype == "App::PropertyFloat":
-            value=float(value)
-        elif proptype == "App::PropertyVector":
-            value=FreeCAD.Base.Vector(eval(value))
         sel = FreeCADGui.Selection.getSelection()
         for ob in sel:
             #FreeCAD.Console.PrintMessage("addprop %s, %s\n"%(self,ob))
-            ob.addProperty(proptype,name,"Custom",name)
-            try:
-                setattr(ob,name,value)
-            except TypeError:
-                FreeCAD.Console.PrintMessage("invalid type for %s.%s: %s\n"%(ob.Label,name,proptype))
+            mesh = ob.Proxy.getParentByType('SMesh')
+            mesh.doop('AddProperty',[ob.Label],name=name,proptype=proptype,value=value)
         tb.hide()
         FreeCAD.ActiveDocument.recompute()
         

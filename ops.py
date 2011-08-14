@@ -23,9 +23,13 @@ class History(object):
         """
         does an operation for the first time
         """
+        FreeCAD.ActiveDocument.openTransaction(operation)
         op=Operation(self,operation,sources,attributes)
         op.play()
         self.history.append(op)
+        FreeCAD.ActiveDocument.commitTransaction()
+        FreeCAD.ActiveDocument.recompute()
+        return op
 
     def redoop(self,op,sources,**attributes):
         """
@@ -77,7 +81,7 @@ class Operation(object):
     def replay(self,sources,attributes):
         """
             replays an operation
-            returns (changed,invalid)
+            returns (changed,deleted,invalid)
             changed is a set of changed elements
             deleted is a set of deleted elements
             invalid is a set of elements became invalid
@@ -88,6 +92,99 @@ class Operation(object):
 
     def __repr__(self):
         return "Operation(%s,%s,%s)"%(self.op, self.sources, self.attributes)
+
+class AddOb:
+    def replay_AddOb(self,sources,**attributes):
+        """
+        recreate the list of points, edges and faces from self.attributes
+        for each new mesh element we reparametrize the next one on the list
+        if there is no more in the list, the we create a new one
+        the mesh elements left on the list after that will be deleted
+        """
+        firstp=None
+        lastp=None
+        points=map(lambda n: FreeCAD.ActiveDocument.getObject(n), self.attributes['points'])
+        edges=map(lambda n: FreeCAD.ActiveDocument.getObject(n), self.attributes['edges'])
+        faces=map(lambda n: FreeCAD.ActiveDocument.getObject(n), self.attributes['faces'])
+        npoints=[]
+        nedges=[]
+        nfaces=[]
+        shape = FreeCAD.ActiveDocument.getObject(sources[0]).Shape
+        for p in shape.Vertexes:
+            if len(points):
+                sp = points[0]
+                points.remove(sp)
+                sp.Coordinates=FreeCAD.Base.Vector(p.Point)
+            else:
+                sp = self.parent.getOrCreatePoint(p.Point,"points")
+                sp.addBirth(self)
+            npoints.append(sp)
+        for se in shape.Edges:
+            if len(edges):
+                e = edges[0]
+                edges.remove(e)
+            else:
+                sp1 = self.parent.getOrCreatePoint(se.Vertexes[0].Point,"points")
+                sp2 = self.parent.getOrCreatePoint(se.Vertexes[1].Point,"points")
+                e=self.parent.getOrCreateEdge(sp1,sp2,"edges")
+                e.addBirth(self)
+            nedges.append(e)
+        for sf in shape.Faces:
+            if len(faces):
+                f = faces[0]
+                faces.remove(f)
+            else:
+                fps=[]
+                for p in sf.Vertexes:
+                    fps.append(self.parent.getOrCreatePoint(p.Point,"points"))
+                f=self.parent.getOrCreateFace(fps,"faces")
+                f.addBirth(self)
+            nfaces.append(f)
+                
+        changed = nedges+npoints+nfaces
+        deleted = points+edges+faces
+        self.attributes['points'] = map(lambda x: x.Label,npoints)
+        self.attributes['edges'] = map(lambda x: x.Label,nedges)
+        self.attributes['faces'] = map(lambda x: x.Label,nfaces)
+        return (changed,deleted,list())
+
+    def play_AddOb(self,sources):
+        FreeCAD.Console.PrintMessage("play_AddOb(%s)\n"%(sources,))
+        firstp=None
+        lastp=None
+        npoints=[]
+        nedges=[]
+        nfaces=[]
+        ob = FreeCAD.ActiveDocument.getObject(sources[0])
+        ob.ViewObject.hide()
+        shape = ob.Shape
+        for p in shape.Vertexes:
+            sp = self.parent.getOrCreatePoint(p.Point,"points")
+            sp.addBirth(self)
+            npoints.append(sp)
+        for se in shape.Edges:
+            if len(se.Vertexes)<2:
+                continue
+            sp1 = self.parent.getOrCreatePoint(se.Vertexes[0].Point,"points")
+            sp2 = self.parent.getOrCreatePoint(se.Vertexes[1].Point,"points")
+            e=self.parent.getOrCreateEdge(sp1,sp2,"edges")
+            e.addBirth(self)
+            nedges.append(e)
+        for sf in shape.Faces:
+            if len(sf.Vertexes)<2:
+                continue
+            fps=[]
+            for p in sf.Vertexes:
+                fps.append(self.parent.getOrCreatePoint(p.Point,"points"))
+            f=self.parent.getOrCreateFace(fps,"faces")
+            f.addBirth(self)
+            nfaces.append(f)
+        self.attributes['points'] = map(lambda x: x.Label,npoints)
+        self.attributes['edges'] = map(lambda x: x.Label,nedges)
+        self.attributes['faces'] = map(lambda x: x.Label,nfaces)
+        return ([],npoints+nedges+nfaces)
+
+Operation.registerOp(AddOb)
 
 class AddPoint:
     def play_AddPoint(self,sources,layer=None,x=0,y=0,z=0):
@@ -145,12 +242,12 @@ import ops
 reload(ops)
 ops.test()
     """
+    import Draft
     FreeCAD.newDocument()
     FreeCAD.setActiveDocument("Unnamed")
     FreeCAD.ActiveDocument=FreeCAD.getDocument("Unnamed")
     FreeCAD.Gui.ActiveDocument=FreeCAD.Gui.getDocument("Unnamed")
     #wb=FreeCAD.Gui.getWorkbench('SurfaceEditingWorkbench')
-    import SurfaceEditing
     am=SurfaceEditing.AddMesh()
     am.Activated()
     mesh=FreeCAD.Gui.getDocument("Unnamed").getObject("Mesh").Proxy
@@ -167,4 +264,19 @@ ops.test()
     mesh.redoop(h1,[],layer='Default Layer',x=0.3,y=0,z=0)
     print p.Coordinates
     FreeCAD.Gui.SendMsgToActiveView("ViewFit")
-    
+    w1=FreeCAD.Base.Vector(0,0,0)
+    w2=FreeCAD.Base.Vector(0,1,0)
+    wire=Draft.makeWire([w1,w2]) 
+    op=mesh.doop('AddWire',[wire.Label])
+    pname=op.attributes['points'][1]
+    mesh.doop('MovePoint',[pname],relative=True,x=-0.2,y=0.2)
+    ob=FreeCAD.Gui.getDocument("Unnamed").getObject("Line")
+    ps=ob.Object.Points
+    ps[1]=FreeCAD.Base.Vector(0.5,0.5,0)
+    ob.Object.Points=ps
+    mesh.redoop(op,op.sources,**op.attributes)
+    mesh.redoop(op,op.sources,**op.attributes)
+    mesh.doop('AddPoint',[],x=0.5,y=0.5,z=1)
+        
+    FreeCAD.Gui.SendMsgToActiveView("ViewFit")
+

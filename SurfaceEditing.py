@@ -178,11 +178,7 @@ class AddMesh:
         self.mesh = SMesh()
         sel = FreeCADGui.Selection.getSelection()
         for ob in sel:
-            tipe = self.obtype(ob)
-            if tipe == "Wire":
-                self.meshWire(ob)
-            else:
-                FreeCAD.Console.PrintMessage('Cannot mesh object %s(%s)\n'%(ob.Label,tipe))
+            self.mesh.doop('AddOb',[ob.Label])
         FreeCAD.ActiveDocument.commitTransaction()
         FreeCAD.ActiveDocument.recompute()
 
@@ -304,10 +300,6 @@ class SurfaceEdit:
     def addPoint(self,pos):
         p=self.getPoint(pos)
         sel = FreeCADGui.Selection.getSelection()
-        FreeCAD.Console.PrintMessage("sel= %s\n"%(sel))
-        FreeCAD.Console.PrintMessage("sel= %s\n"%(map(lambda x: x.Proxy,sel)))
-        FreeCAD.Console.PrintMessage("sel= %s\n"%(map(lambda x: x.Proxy.pytype,sel)))
-        FreeCAD.Console.PrintMessage("sel= %s\n"%(map(lambda x: x.Proxy.pytype.__class__,sel)))
         for s in sel:
             FreeCAD.Console.PrintMessage("s= %s\n"%(s))
             try:

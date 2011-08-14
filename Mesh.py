@@ -109,7 +109,7 @@ mesh.Layers
         """
         #FreeCAD.Console.PrintMessage('search %s, %s\n'%(p1.Label,p2.Label))
         for edge in self.getEdges():
-            if edge.Start==p1 and edge.End==p2:
+            if edge.Start.Proxy==p1 and edge.End.Proxy==p2:
                 #FreeCAD.Console.PrintMessage('found  %s, %s\n'%(edge.Start.Label,edge.End.Label))
                 return edge
         e=SMEdge(self.getOrCreateLayer(layername),p1,p2)

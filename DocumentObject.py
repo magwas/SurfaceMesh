@@ -5,6 +5,7 @@ class DocumentObject(object):
     def __init__(self):
         object.__setattr__(self,'__object__',None)
         object.__setattr__(self,'__vobject__',None)
+        self.birth = list()
 
         """
 App.newDocument()
@@ -108,6 +109,20 @@ m = SMesh()
 
     def __setstate__(self,value):
         return
+
+    def addBirth(self,op):
+        #FIXME if self.birth: two operations resulted the same mesh element
+        #if this keeps this way, then no problem. Solving the problem of a future split
+        #is a too complicated one, so let's just record all ones for now
+        bases=getattr(self,'Bases',None)
+        if not bases:
+            self.addProperty("App::PropertyLinkList","Bases","Base", "base objects of this one")
+        self.birth.append(op)
+        self.Bases += map(lambda x: FreeCAD.ActiveDocument.getObject(x),op.sources)
+
+    def claimChildren(self):
+        bases=getattr(self,'Bases',list())
+        return bases
 
 import sys, traceback
 

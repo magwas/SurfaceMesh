@@ -115,6 +115,10 @@ class Truss(object):
                 if eq != 0:
                     self.eqs.append(eq)
         solution = solve(self.eqs)
+        if solution is None:
+        	print "No solution for this truss"
+        	return
+
         #if a support component makes the truss indeterminate, we fix that component to 0
         missings = set()
         for k,v in solution.items():
@@ -149,7 +153,7 @@ class Truss(object):
 """
 import truss
 reload(truss)
-mesh=Gui.getDocument("bridge").getObject("Mesh").Proxy
+mesh=Gui.getDocument("test").getObject("Mesh").Proxy
 t=truss.Truss(mesh)
 t.solve()
 t.listeqs()

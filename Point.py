@@ -92,7 +92,7 @@ class SMPoint(DocumentObject):
             for f in self.getMyFaces():
                 f.Proxy.createGeometry()
         elif prop == "Visibility":
-            FreeCAD.Console.PrintMessage("V= %s\n"%(self.Visibility))
+            #FreeCAD.Console.PrintMessage("V= %s\n"%(self.Visibility))
             if self.Visibility:
                 self.show()
             else:

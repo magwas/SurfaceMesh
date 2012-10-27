@@ -3,7 +3,7 @@
 import FreeCAD, FreeCADGui 
 from FreeCAD import Gui
 
-from SurfaceMesh.Mesh import SMesh
+from Mesh import SMesh
 
 from draftGui import translate, getMainWindow, DraftDockWidget, DraftLineEdit
 

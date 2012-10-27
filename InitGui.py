@@ -34,3 +34,5 @@ class SurfaceEditingWorkbench (Workbench):
         self.appendToolbar("Surface Editing",list) 
         
 Gui.addWorkbench(SurfaceEditingWorkbench())
+App.addImportType("Freeship FEF (*.fef)","importFEF")
+

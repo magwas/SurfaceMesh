@@ -259,19 +259,23 @@ class Ship:
 			m = SMesh()
 			for layer in self.layers:
 				m.getOrCreateLayer(layer.name)
+			print "# of points=%d"%len(self.points)
+			shippoints = {}
 			for point in self.points:
 				"ship,x,y,z,selected,vertextype"
-				m.getOrCreatePoint((point.x,point.y,point.z)) #no layer!
-			for edge in self.edges:
-				"ship,start,end,crease,selected"
-				start = m.getOrCreatePoint((edge.start.x,edge.start.y,edge.start.z))
-				end = m.getOrCreatePoint((edge.end.x,edge.end.y,edge.end.z))
-				m.getOrCreateEdge(start,end)
+				p = m.getOrCreatePoint((point.x,point.y,point.z)) #no layer!
+				shippoints[(point.x,point.y,point.z)] = p
+			#for edge in self.edges:
+			#	"ship,start,end,crease,selected"
+			#	start = shippoints[(edge.start.x,edge.start.y,edge.start.z)]
+			#	end = shippoints[(edge.end.x,edge.end.y,edge.end.z)]
+			#	m.getOrCreateEdge(start,end)
 			for face in self.faces:
 				"ship,points,layer,selected"
 				points=[]
 				for p in face.points:
-					fp = m.getOrCreatePoint((p.x,p.y,p.z))
+					fp = shippoints[(p.x,p.y,p.z)]
+					points.append(fp)
 				f = m.getOrCreateFace(points,face.layer.name)
 				f.claimChildren()
 		

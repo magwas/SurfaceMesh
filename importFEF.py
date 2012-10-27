@@ -29,8 +29,8 @@ def insert(filename,docname):
 def process(doc,filename):    
 	try:
 		ship=Ship(filename)
+		ship.addToDoc(doc)
 	except:
 		traceback.print_exc(file=sys.stdout)
 		return
-	ship.addToDoc(doc)
 

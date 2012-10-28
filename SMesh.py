@@ -126,7 +126,7 @@ mesh.Layers
         return f
         
     def claimChildren(self):
-        #FreeCAD.Console.PrintMessage("claim %s\n"%(self.Object.Label))
-        return self.Layers
+        FreeCAD.Console.PrintMessage("claim %s\n"%(self.Object.Label))
+        return getattr(self,"Layers",[])
 
 

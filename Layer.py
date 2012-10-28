@@ -59,6 +59,9 @@ class SMLayer(DocumentObject):
         return "Default Layer"
 
     def claimChildren(self):
-        #FreeCAD.Console.PrintMessage("claim %s\n"%(self.Object.Label))
-        return self.Object.Edges + self.Object.Points + self.Object.Faces
+        FreeCAD.Console.PrintMessage("claim %s\n"%(self.Object.Label))
+        edges = getattr(self.Object,"Edges",[])
+        points = getattr(self.Object,"Points",[])
+        faces = getattr(self.Object,"Faces",[])
+        return edges + points + faces
 

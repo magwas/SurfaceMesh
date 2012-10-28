@@ -3,9 +3,10 @@
 import FreeCAD, FreeCADGui 
 from FreeCAD import Gui
 
-from Mesh import SMesh
+from SMesh import SMesh
 
-from draftGui import translate, getMainWindow, DraftDockWidget, DraftLineEdit
+import Draft
+from DraftGui import translate, getMainWindow, DraftDockWidget, DraftLineEdit
 
 from DocumentObject import prtb
 

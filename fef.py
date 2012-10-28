@@ -2,8 +2,8 @@
 # -*- coding: utf-8 -*-
 
 from sympy import *
-from SurfaceEditing import SMesh
-# t1 = felső, t2= alsó , t3 = hátsó
+from SMesh import SMesh
+import FreeCAD
 
 CR='\r\n'
 
@@ -271,7 +271,9 @@ class Ship:
 			#	start = shippoints[(edge.start.x,edge.start.y,edge.start.z)]
 			#	end = shippoints[(edge.end.x,edge.end.y,edge.end.z)]
 			#	m.getOrCreateEdge(start,end)
+			FreeCAD.Console.PrintMessage("first commit")
 			doc.commitTransaction()
+			FreeCAD.Console.PrintMessage("first commit done")
 			for face in self.faces:
 				"ship,points,layer,selected"
 				points=[]
@@ -279,8 +281,10 @@ class Ship:
 					fp = shippoints[(p.x,p.y,p.z)]
 					points.append(fp)
 				f = m.getOrCreateFace(points,face.layer.name)
+				FreeCAD.Console.PrintMessage("commit face %s"%f)
 				doc.commitTransaction()
-				f.claimChildren()
+				FreeCAD.Console.PrintMessage("commited face %s"%f)
+				#f.claimChildren()
 			doc.commitTransaction()
 			doc.recompute()
 		

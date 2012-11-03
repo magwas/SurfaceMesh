@@ -6,7 +6,7 @@ from FreeCAD import Gui
 from SMesh import SMesh
 
 import Draft
-from DraftGui import translate, getMainWindow, DraftDockWidget, DraftLineEdit
+from draftGui import translate, getMainWindow, DraftDockWidget, DraftLineEdit
 
 from DocumentObject import prtb
 

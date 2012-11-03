@@ -44,12 +44,12 @@ class Joint(object):
         self.eq=eq
         tp = getattr(point,"trusspart",None)
         print point.Label,tp
-        if tp == "supported":
+        if tp == self.truss.supportedname:
             self.support = Matrix([[self.eqpart("x")],[self.eqpart("y")],[self.eqpart("z")]])
             self.truss.supportsyms = self.truss.supportsyms.union(self.support)
             self.eq += self.support
             print "supported",point.Label,self.eq
-        if tp == "load":
+        if tp == self.truss.loadname:
             F = self.point.F
             self.eq += Matrix([[F.x],[F.y],[F.z]])
             
@@ -88,16 +88,19 @@ class Truss(object):
                 The force is given in the vector property F
     """
 
-    def __init__(self,mesh):
+    def __init__(self,mesh,beamname="beam",supportedname="supported",loadname="load"):
         """
             initialise our data structures from the given mesh
         """
         self.beams={}
         self.joints={}
         self.supportsyms=set()
+        self.beamname = beamname
+        self.supportedname = supportedname
+        self.loadname = loadname
         for e in mesh.getEdges():
             tp=getattr(e,"trusspart",None)
-            if tp == "beam":
+            if tp == self.beamname:
                 b = Beam(e,self)
                 self.beams[str(b.symbol)]=b
 

@@ -30,9 +30,9 @@ class Beam(object):
         truss.addForce(p2.Proxy,-self.eq,addpoints)
 
     def reportForce(self):
-        if not getattr(self.edge,"Force",None):
+        if None is getattr(self.edge,"Force",None):
             self.edge.addProperty("App::PropertyFloat","Force","Truss")
-        print self.edge.Label
+        #print self.edge.Label
         force=float(self.symbol.subs(self.truss.solution))
         print self.edge.Label,":\t",force
         self.edge.Force=force
@@ -43,12 +43,12 @@ class Joint(object):
         self.point=point
         self.eq=eq
         tp = getattr(point,"trusspart",None)
-        print point.Label,tp
+        #print point.Label,tp
         if tp == self.truss.supportedname:
             self.support = Matrix([[self.eqpart("x")],[self.eqpart("y")],[self.eqpart("z")]])
             self.truss.supportsyms = self.truss.supportsyms.union(self.support)
             self.eq += self.support
-            print "supported",point.Label,self.eq
+            #print "supported",point.Label,self.eq
         if tp == self.truss.loadname:
             F = self.point.F
             self.eq += Matrix([[F.x],[F.y],[F.z]])
@@ -61,16 +61,18 @@ class Joint(object):
         return FreeCAD.Base.Vector(mx[0]/1000,mx[1]/1000,mx[2]/1000)
 
     def reportForce(self):
-        print self.point.Label
-        if getattr(self,"support",None):
-            if not getattr(self.point,"ForceVector",None):
+        if None is not getattr(self,"support",None):
+            if None is getattr(self.point,"ForceVector",None):
                 self.point.addProperty("App::PropertyVector","ForceVector","Truss")
-            if not getattr(self.point,"Force",None):
+            if None is getattr(self.point,"Force",None):
                 self.point.addProperty("App::PropertyFloat","Force","Truss")
-            self.point.ForceVector= self.matrixToVector(self.support.subs(self.truss.solution))
-            self.point.Force = self.point.ForceVector.Length
-
-            
+            fv = self.matrixToVector(self.support.subs(self.truss.solution))
+            self.point.ForceVector = fv
+            self.point.Force = fv.Length
+            print self.point.Label,":\t", fv,"\t", fv.Length
+        else:
+            print self.point.Label, ":\t inner joint"
+				
 
 class Truss(object):
     """
@@ -92,6 +94,7 @@ class Truss(object):
         """
             initialise our data structures from the given mesh
         """
+        self.mesh = mesh
         self.beams={}
         self.joints={}
         self.supportsyms=set()
@@ -140,24 +143,27 @@ class Truss(object):
             
 
     def report(self):
+        doc = self.mesh.getobj().Document
+        doc.openTransaction("Truss calculation")
         for b in self.beams.values():
             b.reportForce()
         for j in self.joints.values():
             j.reportForce()
+        doc.commitTransaction()
 
     def listeqs(self):
         for (k,v) in self.joints.items():
             print k
             print "\t%s\n\t%s\n\t%s\n"%tuple(v.eq.tolist())
-        for (k,v) in self.solution.items():
+        for (k,v) in sorted(self.solution.items()):
             print k,":\t",v
 
 
 """
 import truss
 reload(truss)
-mesh=Gui.getDocument("test").getObject("Mesh").Proxy
-t=truss.Truss(mesh)
+mesh=Gui.getDocument("truss").getObject("Mesh").Object.Proxy
+t=truss.Truss(mesh,beamname="beam1",supportedname="beam1c1sup",loadname="beam1c1load")
 t.solve()
 t.listeqs()
 """

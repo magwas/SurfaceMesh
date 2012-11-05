@@ -58,7 +58,7 @@ class Joint(object):
 
     def matrixToVector(self,mx):
         """It also converts from stadard FreeCAD mm to SI m"""
-        return FreeCAD.Base.Vector(mx[0]/1000,mx[1]/1000,mx[2]/1000)
+        return FreeCAD.Base.Vector(mx[0]/1000.0,mx[1]/1000.0,mx[2]/1000.0)
 
     def reportForce(self):
         if None is not getattr(self,"support",None):
@@ -101,6 +101,7 @@ class Truss(object):
         self.beamname = beamname
         self.supportedname = supportedname
         self.loadname = loadname
+        self.valid=None
         for e in mesh.getEdges():
             tp=getattr(e,"trusspart",None)
             if tp == self.beamname:
@@ -138,11 +139,22 @@ class Truss(object):
             missings = missings.union(syms)
         for s in missings:
             self.eqs.append(s)
+            print s," is missing, fixed"
+        self.missing = missings
         self.solution = solve(self.eqs)
-        self.report()
+        for eq in self.eqs:
+          if eq.subs(self.solution) > 0.0001:
+            self.valid = False
+        if self.valid:
+            self.report()
+        else:
+            print "Solution is invalid. See http://code.google.com/p/sympy/issues/detail?id=3493"
             
 
     def report(self):
+        if None is self.valid:
+            print "solve it first"
+            return
         doc = self.mesh.getobj().Document
         doc.openTransaction("Truss calculation")
         for b in self.beams.values():
@@ -152,18 +164,41 @@ class Truss(object):
         doc.commitTransaction()
 
     def listeqs(self):
+        if None is self.valid:
+            print "solve it first"
+            return
         for (k,v) in self.joints.items():
-            print k
-            print "\t%s\n\t%s\n\t%s\n"%tuple(v.eq.tolist())
+            print "#",k
+            print "\t%s,\n\t%s,\n\t%s,\n"%tuple(v.eq.tolist())
+        print "--------------"
+        for i in self.missing:
+            print i,"\tzeroed"
+        print "--------------"
         for (k,v) in sorted(self.solution.items()):
             print k,":\t",v
+        if False is self.valid:
+            print "Solution is invalid. See http://code.google.com/p/sympy/issues/detail?id=3493"
+    def printraweqs(self):
+        if None is self.valid:
+            print "solve it first"
+            return
+        e=set()
+        for i in self.eqs:
+           e = e.union(map(lambda x: str(x),i.atoms(Symbol)))
+        print "syms = " + ", ".join(map(lambda x: "'" + x + "'",e))
+        print "%s = symbols(syms)"%(", ".join(e))
+        print "eqs = ", self.eqs
+        print "len(eqs) = %u"%len(self.eqs)
+        print "len(syms) = %u" % len(e)
+        if False is self.valid:
+            print "Solution is invalid. See http://code.google.com/p/sympy/issues/detail?id=3493"
 
 
 """
 import truss
 reload(truss)
 mesh=Gui.getDocument("truss").getObject("Mesh").Object.Proxy
-t=truss.Truss(mesh,beamname="beam1",supportedname="beam1c1sup",loadname="beam1c1load")
+t=truss.Truss(mesh,beamname="beam",supportedname="sup",loadname="load")
 t.solve()
-t.listeqs()
+t.printraweqs()
 """

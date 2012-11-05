@@ -1,11 +1,10 @@
 
 import FreeCAD
 
-have_sympy=False
 try:
     from sympy import *
 except ImportError:
-   FreeCAD.Console.PrintMessage("truss calculation needs python-sympy")
+   FreeCAD.Console.PrintMessage("truss calculation needs python-sympy\n")
 
 class Beam(object):
     def toMatrix(self,v):
@@ -25,34 +24,52 @@ class Beam(object):
         self.edge=edge
         p1=edge.Start
         p2=edge.End
-        self.eq=self.dirVector(p1.Coordinates,p2.Coordinates)*l
-        truss.addForce(p1.Proxy,self.eq,addpoints)
-        truss.addForce(p2.Proxy,-self.eq,addpoints)
+        self.vect=self.dirVector(p1.Coordinates,p2.Coordinates)
+        self.eq=self.vect*self.symbol
+        truss.addForce(p1.Proxy,self.vect,self.symbol,addpoints)
+        truss.addForce(p2.Proxy,-self.vect,self.symbol,addpoints)
 
     def reportForce(self):
         if None is getattr(self.edge,"Force",None):
             self.edge.addProperty("App::PropertyFloat","Force","Truss")
-        #print self.edge.Label
         force=float(self.symbol.subs(self.truss.solution))
-        print self.edge.Label,":\t",force
         self.edge.Force=force
 
 class Joint(object):
-    def __init__(self,point,truss,eq):
+    def __init__(self,point,truss,vect,symbol):
         self.truss=truss
         self.point=point
-        self.eq=eq
+        self.eq = Matrix([[0],[0],[0]])
+        self.mlines = [{},{},{}]
+        self.addEq(vect,symbol)
         tp = getattr(point,"trusspart",None)
-        #print point.Label,tp
         if tp == self.truss.supportedname:
-            self.support = Matrix([[self.eqpart("x")],[self.eqpart("y")],[self.eqpart("z")]])
+            px = self.eqpart("x")
+            py = self.eqpart("y")
+            pz = self.eqpart("z")
+            self.support = Matrix([[px],[py],[pz]])
+            self.mlines[0][px] = 1.0
+            self.mlines[1][py] = 1.0
+            self.mlines[2][pz] = 1.0
+            self.truss.syms.add(px)
+            self.truss.syms.add(py)
+            self.truss.syms.add(pz)
             self.truss.supportsyms = self.truss.supportsyms.union(self.support)
             self.eq += self.support
-            #print "supported",point.Label,self.eq
         if tp == self.truss.loadname:
             F = self.point.F
+            self.mlines[0][0] = - F.x
+            self.mlines[1][0] = - F.y
+            self.mlines[2][0] = - F.z
             self.eq += Matrix([[F.x],[F.y],[F.z]])
             
+    def addEq(self,vect,symbol):
+        self.eq += vect*symbol
+        self.mlines[0][symbol] = vect[0]
+        self.mlines[1][symbol] = vect[1]
+        self.mlines[2][symbol] = vect[2]
+        self.truss.syms.add(symbol)
+
     def eqpart(self,axis):
         return symbols("%s_%s"%(str(self.point.Label),axis),real=True, each_char=False)
 
@@ -69,9 +86,6 @@ class Joint(object):
             fv = self.matrixToVector(self.support.subs(self.truss.solution))
             self.point.ForceVector = fv
             self.point.Force = fv.Length
-            print self.point.Label,":\t", fv,"\t", fv.Length
-        else:
-            print self.point.Label, ":\t inner joint"
 				
 
 class Truss(object):
@@ -102,28 +116,69 @@ class Truss(object):
         self.supportedname = supportedname
         self.loadname = loadname
         self.valid=None
+        self.syms = set()
         for e in mesh.getEdges():
             tp=getattr(e,"trusspart",None)
             if tp == self.beamname:
                 b = Beam(e,self)
                 self.beams[str(b.symbol)]=b
 
-    def addForce(self,point,eq,addpoints=True):
+    def addForce(self,point,vect,symbol,addpoints=True):
+        self.syms.add(symbol)
         if not self.joints.has_key(point.Label):
             if addpoints:
-                self.joints[point.Label]=Joint(point,self,eq)
+                self.joints[point.Label]=Joint(point,self,vect,symbol)
         else:
-            self.joints[point.Label].eq += eq
+            self.joints[point.Label].addEq(vect,symbol)
 
     def solve(self):
+       return self.solve_matrix()
+
+    def solve_matrix(self):
+        # first make a list of the symbols. they will be the columns of the matrix 0 forthe constant column
+        slist = sorted(self.syms)
+        slist.append(0)
+        FreeCAD.Console.PrintMessage("syms= %s\n"%(slist,))
+        #build the rows of the matrix. we use a hash so we can later identify the rows by label
+        mx = {}
+        for (k,v) in self.joints.items():
+            FreeCAD.Console.PrintMessage("building lines for %s\n"%k)
+            for n in 0,1,2:
+                kk = "%s_%s"%(k,n)
+                row = []
+                for s in slist:
+                    if v.mlines[n].has_key(s):
+                      row.append(v.mlines[n][s])
+                    else:
+                      row.append(0.0)
+                mx[kk] = row
+        self.mx = mx
+        #the rows are in alphabetical order of their label
+        self.rlabels = sorted(mx.keys())
+        mxv = []
+        for l in self.rlabels:
+            mxv.append(mx[l])
+        self.matrix = Matrix(mxv)
+        # and now we solve it
+        FreeCAD.Console.PrintMessage("slist = %s\n"%(slist,))
+        FreeCAD.Console.PrintMessage("rlabels = %s\n"%(self.rlabels,))
+        FreeCAD.Console.PrintMessage("matrix = %s\n"%(self.matrix,))
+        self.solution = solve_linear_system(self.matrix,*slist[:-1])
+        self._compileEqs()
+        self._doReport()
+
+    def _compileEqs(self):
         self.eqs=[]
         for (k,v) in self.joints.items():
             for eq in v.eq:
                 if eq != 0:
                     self.eqs.append(eq)
+
+    def solve_symbolic(self):
+        self._compileEqs()
         solution = solve(self.eqs)
         if solution is None:
-        	print "No solution for this truss"
+        	FreeCAD.Console.PrintMessage("No solution for this truss\n")
         	return
 
         #if a support component makes the truss indeterminate, we fix that component to 0
@@ -133,27 +188,30 @@ class Truss(object):
             if not syms:
                 continue
             if syms - self.supportsyms:
-                print syms
-                print self.supportsyms
+                FreeCAD.Console.PrintMessage("syms=%s\n"%(syms,))
+                FreeCAD.Console.PrintMessage("self.supportsysms=%s\n"%(self.supportsysms,))
                 raise ValueError("This truss is unsolvable")
             missings = missings.union(syms)
         for s in missings:
             self.eqs.append(s)
-            print s," is missing, fixed"
+            FreeCAD.Console.PrintMessage("%s is missing, fixed\n"%s)
         self.missing = missings
         self.solution = solve(self.eqs)
+        self._doReport()
+
+    def _doReport(self):
         for eq in self.eqs:
           if eq.subs(self.solution) > 0.0001:
             self.valid = False
         if self.valid:
             self.report()
         else:
-            print "Solution is invalid. See http://code.google.com/p/sympy/issues/detail?id=3493"
+            FreeCAD.Console.PrintMessage("Solution is invalid. See http://code.google.com/p/sympy/issues/detail?id=3493\n")
             
 
     def report(self):
         if None is self.valid:
-            print "solve it first"
+            FreeCAD.Console.PrintMessage( "solve it first\n")
             return
         doc = self.mesh.getobj().Document
         doc.openTransaction("Truss calculation")
@@ -165,33 +223,33 @@ class Truss(object):
 
     def listeqs(self):
         if None is self.valid:
-            print "solve it first"
+            FreeCAD.Console.PrintMessage( "solve it first\n")
             return
         for (k,v) in self.joints.items():
-            print "#",k
-            print "\t%s,\n\t%s,\n\t%s,\n"%tuple(v.eq.tolist())
-        print "--------------"
+            FreeCAD.Console.PrintMessage("#%s\n"%k)
+            FreeCAD.Console.PrintMessage( "\t%s,\n\t%s,\n\t%s,\n"%tuple(v.eq.tolist()))
+        FreeCAD.Console.PrintMessage( "--------------\n")
         for i in self.missing:
-            print i,"\tzeroed"
-        print "--------------"
+            FreeCAD.Console.PrintMessage( "%s\tzeroed\n"%i )
+        FreeCAD.Console.PrintMessage( "--------------\n" )
         for (k,v) in sorted(self.solution.items()):
-            print k,":\t",v
+            FreeCAD.Console.PrintMessage( "%s:\t%s\n"%(k,v))
         if False is self.valid:
-            print "Solution is invalid. See http://code.google.com/p/sympy/issues/detail?id=3493"
+            FreeCAD.Console.PrintMessage( "Solution is invalid. See http://code.google.com/p/sympy/issues/detail?id=3493\n" )
     def printraweqs(self):
         if None is self.valid:
-            print "solve it first"
+            FreeCAD.Console.PrintMessage( "solve it first\n")
             return
         e=set()
         for i in self.eqs:
            e = e.union(map(lambda x: str(x),i.atoms(Symbol)))
-        print "syms = " + ", ".join(map(lambda x: "'" + x + "'",e))
-        print "%s = symbols(syms)"%(", ".join(e))
-        print "eqs = ", self.eqs
-        print "len(eqs) = %u"%len(self.eqs)
-        print "len(syms) = %u" % len(e)
+        FreeCAD.Console.PrintMessage( "syms = %s\n" %(", ".join(map(lambda x: "'" + x + "'",e)),))
+        FreeCAD.Console.PrintMessage( "%s = symbols(syms)\n"%(", ".join(e)))
+        FreeCAD.Console.PrintMessage( "eqs = %s\n"%( self.eqs,))
+        FreeCAD.Console.PrintMessage( "len(eqs) = %u\n"%len(self.eqs))
+        FreeCAD.Console.PrintMessage( "len(syms) = %u\n" % len(e))
         if False is self.valid:
-            print "Solution is invalid. See http://code.google.com/p/sympy/issues/detail?id=3493"
+            FreeCAD.Console.PrintMessage( "Solution is invalid. See http://code.google.com/p/sympy/issues/detail?id=3493\n" )
 
 
 """

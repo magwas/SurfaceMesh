@@ -1,17 +1,19 @@
 # coding=UTF-8
 
-import FreeCAD, FreeCADGui 
+import FreeCAD, FreeCADGui
 from FreeCAD import Gui
 
 from SMesh import SMesh
 
 import Draft
-from DraftGui import translate, getMainWindow, DraftDockWidget, DraftLineEdit
+from DraftGui import translate, DraftDockWidget, DraftLineEdit
 
 from DocumentObject import prtb
 
-from PyQt4 import QtCore,QtGui,QtSvg    
-
+try:
+    from PySide import QtCore,QtGui,QtSvg
+except:
+    FreeCAD.Console.PrintMessage("Error: Python-pyside package must be installed on      your system to use the Draft module.")
 
 """
 import SurfaceEditing
@@ -25,7 +27,7 @@ FreeCADGui.seToolbar.seWidget.setVisible(True)
 class SEToolbar:
     def __init__(self):
             # create the se Toolbar
-            self.mw = getMainWindow()
+            self.mw =  FreeCADGui.getMainWindow()
             self.seWidget = QtGui.QDockWidget()
             self.baseWidget = DraftDockWidget()
             self.seWidget.setObjectName("seToolbar")
